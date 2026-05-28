@@ -4,7 +4,7 @@ import {
   TrendingUp, Calendar, Phone, Globe, Image as ImageIcon
 } from 'lucide-react';
 
-export default function PropertyDetail({ property, onBackClick, onStagingClick }) {
+export default function PropertyDetail({ property, onBackClick, onStagingClick, onInquireClick }) {
   if (!property) return null;
 
   // Render SVG Price Trend chart path dynamically or use default
@@ -176,9 +176,7 @@ export default function PropertyDetail({ property, onBackClick, onStagingClick }
             </div>
             <div className="flex flex-col gap-3">
               <button 
-                onClick={() => {
-                  alert("Opening consultation connection to Julian Thorne.");
-                }}
+                onClick={() => onInquireClick && onInquireClick(property)}
                 className="w-full bg-accent-blue text-white py-3 rounded-full text-[14px] font-semibold hover:opacity-90 transition-all cursor-pointer active:scale-95"
               >
                 Contact Agent

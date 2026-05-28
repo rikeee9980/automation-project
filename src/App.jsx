@@ -10,6 +10,7 @@ import AIChatbot from './components/AIChatbot';
 import AdminPanel from './components/AdminPanel';
 import PropertyDetail from './components/PropertyDetail';
 import SellProperty from './components/SellProperty';
+import InquiryModal from './components/InquiryModal';
 import { fetchProperties } from './lib/propertyService';
 import { mockProperties, mockAgents } from './data/mockProperties';
 import { Sparkles } from 'lucide-react';
@@ -23,6 +24,13 @@ function AppContent() {
   const [searchCriteria, setSearchCriteria] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
+  const [inquiryProperty, setInquiryProperty] = useState(null);
+
+  const handleInquireClick = (property) => {
+    setInquiryProperty(property);
+    setIsInquiryOpen(true);
+  };
 
   // Fetch properties from Supabase on mount
   useEffect(() => {
@@ -127,6 +135,7 @@ function AppContent() {
                   property={selectedProperty} 
                   onBackClick={() => setViewMode('list')} 
                   onStagingClick={selectPropertyForStaging} 
+                  onInquireClick={handleInquireClick}
                 />
               ) : (
                 <>
@@ -170,6 +179,7 @@ function AppContent() {
                               setSelectedProperty(p);
                               setViewMode('detail');
                             }}
+                            onInquireClick={handleInquireClick}
                           />
                         ))}
                       </div>
@@ -213,6 +223,13 @@ function AppContent() {
 
       {/* Floating Chatbot */}
       {!isAdmin && <AIChatbot properties={properties} />}
+
+      {/* Inquiry Popup Modal */}
+      <InquiryModal 
+        isOpen={isInquiryOpen} 
+        onClose={() => setIsInquiryOpen(false)} 
+        property={inquiryProperty} 
+      />
 
       {/* Clean Footer */}
       <footer className="w-full py-12 bg-surface-offwhite border-t border-border-subtle">

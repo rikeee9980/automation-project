@@ -1,7 +1,7 @@
 import React from 'react';
 import { MapPin, Ruler, BedDouble, Bath, TrendingUp } from 'lucide-react';
 
-export default function ListingCard({ property, onStagingClick, onPropertyClick }) {
+export default function ListingCard({ property, onStagingClick, onPropertyClick, onInquireClick }) {
   // Calculate 1-year projected price change percentage
   const projectedPercent = (((property.aiPricePrediction.oneYear - property.price) / property.price) * 100).toFixed(1);
 
@@ -89,13 +89,7 @@ export default function ListingCard({ property, onStagingClick, onPropertyClick 
             Virtual Stage
           </button>
           <button 
-            onClick={() => {
-              const el = document.getElementById('chatbot-input');
-              if (el) {
-                el.value = `Tell me more about ${property.title} in ${property.location.city}`;
-                el.focus();
-              }
-            }}
+            onClick={() => onInquireClick && onInquireClick(property)}
             className="flex-1 bg-accent-blue hover:opacity-90 text-white py-2 rounded-full text-[13px] font-semibold transition-all duration-300 cursor-pointer active:scale-95 text-center"
           >
             Inquire
