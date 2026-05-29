@@ -3,7 +3,7 @@ import { LayoutDashboard, LogOut, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import LoginModal from './LoginModal';
 
-export default function Navbar({ currentTab, setCurrentTab, isAdmin, setIsAdmin }) {
+export default function Navbar({ currentTab, setCurrentTab, isAdmin, setIsAdmin, savedCount = 0 }) {
   const { user, signOut, isAuthenticated } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -53,6 +53,14 @@ export default function Navbar({ currentTab, setCurrentTab, isAdmin, setIsAdmin 
     }
   };
 
+  const navTabs = [
+    { id: 'home', label: 'Buy' },
+    { id: 'map', label: 'Map' },
+    { id: 'sell', label: 'Sell' },
+    { id: 'tools', label: 'Tools' },
+    { id: 'saved', label: 'Saved', showCount: true },
+  ];
+
   return (
     <>
       <nav className={`fixed top-0 w-full h-[52px] bg-white border-b border-border-subtle z-50 transition-shadow duration-300 ${scrolled ? 'shadow-md border-transparent' : ''}`}>
@@ -72,30 +80,20 @@ export default function Navbar({ currentTab, setCurrentTab, isAdmin, setIsAdmin 
           <div className="hidden md:flex gap-8 items-center h-full">
             {!isAdmin ? (
               <>
-                <button 
-                  onClick={() => setCurrentTab('home')} 
-                  className={`nav-link text-[17px] leading-[1.47] h-full flex items-center cursor-pointer transition-colors ${currentTab === 'home' ? 'text-primary font-bold nav-link-active' : 'text-on-surface-variant hover:text-primary'}`}
-                >
-                  Buy
-                </button>
-                <button 
-                  onClick={() => setCurrentTab('map')} 
-                  className={`nav-link text-[17px] leading-[1.47] h-full flex items-center cursor-pointer transition-colors ${currentTab === 'map' ? 'text-primary font-bold nav-link-active' : 'text-on-surface-variant hover:text-primary'}`}
-                >
-                  Rent
-                </button>
-                <button 
-                  onClick={() => setCurrentTab('sell')} 
-                  className={`nav-link text-[17px] leading-[1.47] h-full flex items-center cursor-pointer transition-colors ${currentTab === 'sell' ? 'text-primary font-bold nav-link-active' : 'text-on-surface-variant hover:text-primary'}`}
-                >
-                  Sell
-                </button>
-                <button 
-                  onClick={() => setCurrentTab('trends')} 
-                  className={`nav-link text-[17px] leading-[1.47] h-full flex items-center cursor-pointer transition-colors ${currentTab === 'trends' ? 'text-primary font-bold nav-link-active' : 'text-on-surface-variant hover:text-primary'}`}
-                >
-                  Insights
-                </button>
+                {navTabs.map(tab => (
+                  <button 
+                    key={tab.id}
+                    onClick={() => setCurrentTab(tab.id)} 
+                    className={`nav-link text-[17px] leading-[1.47] h-full flex items-center cursor-pointer transition-colors gap-1.5 ${currentTab === tab.id ? 'text-primary font-bold nav-link-active' : 'text-on-surface-variant hover:text-primary'}`}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.showCount && savedCount > 0 && (
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-accent-blue text-white rounded-full leading-none flex items-center justify-center">
+                        {savedCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
               </>
             ) : (
               <span className="text-accent-blue font-medium text-[14px] leading-[1.2] px-4 py-1 bg-primary-container/5 rounded-full">

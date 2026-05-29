@@ -28,11 +28,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
   const [imagePreview, setImagePreview] = useState('');
   const [editingId, setEditingId] = useState(null);
 
-  // Staging simulator
-  const [stageFile, setStageFile] = useState(null);
-  const [stagingProgress, setStagingProgress] = useState(0);
-  const [stagingRunning, setStagingRunning] = useState(false);
-  const [stagedOutput, setStagedOutput] = useState(null);
+
 
   // Inquiries State
   const [inquiries, setInquiries] = useState([]);
@@ -208,25 +204,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
     }
   };
 
-  // Simulated AI Staging render
-  const startAIStaging = () => {
-    if (!stageFile) return;
-    setStagingRunning(true);
-    setStagingProgress(0);
-    setStagedOutput(null);
 
-    const interval = setInterval(() => {
-      setStagingProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setStagingRunning(false);
-          setStagedOutput("https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?auto=format&fit=crop&w=800&q=80");
-          return 100;
-        }
-        return p + 25;
-      });
-    }, 200);
-  };
 
   // Draft AI Response
   const draftAIResponse = (inquiry) => {
@@ -366,13 +344,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
             <span className="text-[14px] font-semibold">Add Listing</span>
           </button>
 
-          <button 
-            onClick={() => setActiveSubTab('staging')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg w-full text-left transition-all ${activeSubTab === 'staging' ? 'sidebar-active text-accent-blue bg-surface-offwhite' : 'text-on-surface-variant hover:bg-surface-offwhite hover:text-primary font-medium'}`}
-          >
-            <Layers size={18} />
-            <span className="text-[14px] font-semibold">Staging Lab</span>
-          </button>
+
 
           <button 
             onClick={() => setActiveSubTab('inquiries')}
@@ -468,7 +440,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
                 </div>
                 <div className="bg-white p-6 rounded-card border border-border-subtle shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
                   <p className="text-on-surface-variant text-[14px] font-semibold mb-2">Revenue</p>
-                  <p className="text-[32px] font-bold text-primary">₹2.4Cr</p>
+                  <p className="text-[32px] font-bold text-primary">Rs. 2.4Cr</p>
                   <div className="mt-2 text-success text-[13px] font-semibold">
                     Q3 Target achieved
                   </div>
@@ -506,7 +478,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
                             </div>
                           </td>
                           <td className="px-6 py-4 text-[15px] font-semibold text-primary">
-                            ₹{(prop.price / 100000).toFixed(0)}L
+                            Rs. {(prop.price / 100000).toFixed(0)}L
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
@@ -674,59 +646,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
             </div>
           )}
 
-          {/* Subtab: AI Staging Lab */}
-          {activeSubTab === 'staging' && (
-            <div className="bg-white border border-border-subtle rounded-card p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-              <h2 className="text-[24px] font-semibold text-primary mb-2">Virtual Staging Studio</h2>
-              <p className="text-on-surface-variant text-[14px] mb-6">Upload empty room templates to compile staging options.</p>
 
-              <div 
-                onClick={() => setStageFile({ name: 'empty_room_blueprint.png' })}
-                className="border-2 border-dashed border-border-strong bg-surface-offwhite hover:bg-border-subtle rounded-card p-10 text-center cursor-pointer transition-all mb-6" 
-              >
-                <Upload size={28} className="text-accent-blue mx-auto mb-2" />
-                {stageFile ? (
-                  <div className="text-primary font-bold">{stageFile.name} (Loaded)</div>
-                ) : (
-                  <div>
-                    <span className="text-primary font-bold">Click to import raw image</span>
-                    <p className="text-[12px] text-on-surface-variant mt-1">PNG, JPG up to 10MB</p>
-                  </div>
-                )}
-              </div>
-
-              {stageFile && (
-                <div className="flex flex-col gap-4">
-                  <button 
-                    onClick={startAIStaging} 
-                    disabled={stagingRunning} 
-                    className="self-start px-6 py-2.5 bg-accent-blue text-white rounded-full text-[14px] font-semibold hover:opacity-90 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                  >
-                    Render Staging Layout
-                  </button>
-
-                  {stagingRunning && (
-                    <div className="max-w-xs">
-                      <div className="flex justify-between text-[13px] text-primary font-medium mb-1.5">
-                        <span>Rendering furnished version...</span>
-                        <span>{stagingProgress}%</span>
-                      </div>
-                      <div className="h-1.5 bg-surface-offwhite border border-border-subtle rounded-full overflow-hidden">
-                        <div style={{ width: `${stagingProgress}%` }} className="h-full bg-accent-blue transition-all duration-200"></div>
-                      </div>
-                    </div>
-                  )}
-
-                  {stagedOutput && (
-                    <div className="mt-4 bg-surface-offwhite p-4 border border-border-subtle rounded-card">
-                      <h4 className="text-primary text-[14px] font-bold mb-3">Staged Preview:</h4>
-                      <img src={stagedOutput} alt="Output" className="w-full max-w-sm rounded-[8px] object-cover" />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Subtab: Inquiries */}
           {activeSubTab === 'inquiries' && (
@@ -847,7 +767,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
                           </span>
                         </div>
                         <div className="flex gap-4 text-[13px] text-on-surface-variant">
-                          <span>₹{(sub.price / 100000).toFixed(0)}L</span>
+                          <span>Rs. {(sub.price / 100000).toFixed(0)}L</span>
                           <span>{sub.details?.bedrooms || '—'} BHK</span>
                           <span>{new Date(sub.created_at).toLocaleDateString()}</span>
                         </div>
@@ -875,7 +795,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
                         <div className="grid grid-cols-2 gap-3 mb-4">
                           <div className="bg-surface-offwhite p-3 rounded-lg">
                             <p className="text-[11px] text-on-surface-variant font-bold uppercase">Price</p>
-                            <p className="text-[16px] font-bold text-primary">₹{(selectedSubmission.price / 100000).toFixed(0)} Lakhs</p>
+                            <p className="text-[16px] font-bold text-primary">Rs. {(selectedSubmission.price / 100000).toFixed(0)} Lakhs</p>
                           </div>
                           <div className="bg-surface-offwhite p-3 rounded-lg">
                             <p className="text-[11px] text-on-surface-variant font-bold uppercase">Config</p>

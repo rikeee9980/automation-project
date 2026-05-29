@@ -117,7 +117,7 @@ export default function InquiryModal({ isOpen, onClose, property }) {
                     <span className="truncate">{property.location?.address}, {property.location?.city}</span>
                   </div>
                   <span className="text-[13px] font-bold text-primary mt-1">
-                    ₹{(property.price / 100000).toFixed(0)} Lakhs
+                    Rs. {(property.price / 100000).toFixed(0)} Lakhs
                   </span>
                 </div>
               </div>

@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 import { mockProperties, mockAgents } from '../data/mockProperties';
 
@@ -38,7 +39,7 @@ export async function createProperty(propertyData) {
       title: propertyData.title,
       slug,
       price: propertyData.price,
-      location: propertyData.location || { address: 'New Link Road', city: 'Mumbai', state: 'MH', zip: '400053' },
+      location: propertyData.location || { address: 'Baluwatar Road', city: 'Kathmandu', state: 'Bagmati', zip: '44600' },
       details: propertyData.details || { bedrooms: 3, bathrooms: 3, area: 3000, floors: 1, parking: 2 },
       amenities: propertyData.amenities || ['Smart Core Integration'],
       image: propertyData.image || '',
@@ -303,6 +304,9 @@ function transformProperty(row) {
     title: row.title,
     slug: row.slug,
     price: row.price,
+    purpose: row.purpose || 'buy',
+    type: row.type || 'house',
+    isFeatured: row.is_featured || false,
     priceHistory: [
       { month: 'Mar', price: Math.round(row.price * 0.98) },
       { month: 'Apr', price: Math.round(row.price * 0.99) },
@@ -312,11 +316,11 @@ function transformProperty(row) {
     details: row.details || {},
     amenities: row.amenities || [],
     image: row.image || '',
-    beforeImage: row.before_image || '',
-    afterImage: row.after_image || '',
-    virtualTourUrl: '#',
-    aiScore: row.ai_score || 90,
-    aiPricePrediction: row.ai_price_prediction || {},
+    images: row.images || (row.image ? [row.image] : []),
+    roadAccess: row.road_access || null,
+    facing: row.facing || null,
+    builtYear: row.built_year || null,
+    areaLocal: row.area_local || null,
     status: row.status || 'available',
     agentId: row.agent_id,
     createdAt: row.created_at,

@@ -352,7 +352,7 @@ export default function SellProperty() {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Mumbai"
+                  placeholder="e.g. Kathmandu"
                   className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-xl text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue"
                 />
               </div>
@@ -451,7 +451,7 @@ export default function SellProperty() {
                 <h4 className="text-[13px] font-bold text-on-surface-variant uppercase tracking-wider mb-3">Property</h4>
                 <div className="space-y-2 text-[14px]">
                   <p><span className="text-on-surface-variant font-medium">Title:</span> <span className="text-primary font-semibold">{title}</span></p>
-                  <p><span className="text-on-surface-variant font-medium">Price:</span> <span className="text-primary font-semibold">₹{price} Lakhs</span></p>
+                  <p><span className="text-on-surface-variant font-medium">Price:</span> <span className="text-primary font-semibold">Rs. {price} Lakhs</span></p>
                   <p><span className="text-on-surface-variant font-medium">Config:</span> <span className="text-primary font-semibold">{bedrooms} BHK · {area || '—'} sqft</span></p>
                   {city && <p><span className="text-on-surface-variant font-medium">Location:</span> <span className="text-primary font-semibold">{address ? `${address}, ` : ''}{city}</span></p>}
                 </div>

@@ -73,14 +73,18 @@ const mapStyles = [
 
 // Predefined cities mapping for offline fallback search geocoding
 const fallbackCities = {
-  "neo metropolis": { lat: 40.7128, lng: -74.0060 },
-  "new york": { lat: 40.7128, lng: -74.0060 },
-  "manhattan": { lat: 40.7831, lng: -73.9712 },
-  "brooklyn": { lat: 40.6782, lng: -73.9442 },
-  "queens": { lat: 40.7282, lng: -73.7949 },
-  "mumbai": { lat: 19.0760, lng: 72.8777 },
-  "bandra": { lat: 19.0607, lng: 72.8362 },
-  "worli": { lat: 18.9986, lng: 72.8174 }
+  "kathmandu": { lat: 27.7172, lng: 85.3240 },
+  "lalitpur": { lat: 27.6710, lng: 85.3122 },
+  "bhaktapur": { lat: 27.6710, lng: 85.4298 },
+  "jhamsikhel": { lat: 27.6780, lng: 85.3122 },
+  "baluwatar": { lat: 27.7172, lng: 85.3240 },
+  "sanepa": { lat: 27.6780, lng: 85.3122 },
+  "pokhara": { lat: 28.2096, lng: 83.9856 },
+  "chitwan": { lat: 27.6756, lng: 84.4284 },
+  "bharatpur": { lat: 27.6756, lng: 84.4284 },
+  "butwal": { lat: 27.7006, lng: 83.4484 },
+  "biratnagar": { lat: 26.4525, lng: 87.2718 },
+  "dharan": { lat: 26.8124, lng: 87.2834 }
 };
 
 // Helper to load Google Maps API dynamically with visualization and geometry libraries
@@ -111,7 +115,7 @@ function loadGoogleMapsAPI(apiKey) {
 
 // Function to generate the premium custom SVG listing price pill marker
 function createPricePillSvg(price, isSelected) {
-  const priceText = `₹${(price / 100000).toFixed(0)}L`;
+  const priceText = `Rs. ${(price / 100000).toFixed(0)}L`;
   const bg = isSelected ? '#0071e3' : '#ffffff';
   const text = isSelected ? '#ffffff' : '#1d1d1f';
   const strokeColor = isSelected ? '#0071e3' : '#e5e5ea';
@@ -162,11 +166,14 @@ export default function MapExplorer({ properties, onSelectProperty }) {
   const [hasDrawnFilter, setHasDrawnFilter] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [silentOffline, setSilentOffline] = useState(false);
 
   // Fallback states for centering and custom marker tracking
   const [fallbackCenter, setFallbackCenter] = useState(null);
   const [userLocationFallback, setUserLocationFallback] = useState(null);
   const [searchedLocationFallback, setSearchedLocationFallback] = useState(null);
+  const [fallbackZoom, setFallbackZoom] = useState(1);
+  const [redrawTrigger, setRedrawTrigger] = useState(0);
 
   const mapContainerRef = useRef(null);
   const drawingCanvasRef = useRef(null);
@@ -186,7 +193,15 @@ export default function MapExplorer({ properties, onSelectProperty }) {
   const loadMaps = () => {
     setLoading(true);
     setError(null);
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+    setSilentOffline(false);
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey || apiKey === 'placeholder' || apiKey.trim() === '') {
+      console.warn('No Google Maps API Key provided, using offline fallback map.');
+      setError('Google Maps API key is missing.');
+      setSilentOffline(true);
+      setLoading(false);
+      return;
+    }
     loadGoogleMapsAPI(apiKey)
       .then(() => {
         setLoading(false);
@@ -194,12 +209,25 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       .catch(err => {
         console.warn('Failed to load Google Maps API, using offline fallback map:', err);
         setError('Could not load Google Maps API.');
+        setSilentOffline(false);
         setLoading(false);
       });
   };
 
   useEffect(() => {
+    // Capture Google Maps Auth Failures (like Invalid Key, ApiProjectMapError, etc.)
+    window.gm_authFailure = () => {
+      console.warn('Google Maps authentication failed. Falling back to offline map.');
+      setError('Google Maps authentication failed (Invalid API Key).');
+      setSilentOffline(false);
+      setLoading(false);
+    };
+
     loadMaps();
+
+    return () => {
+      delete window.gm_authFailure;
+    };
   }, []);
 
   // Initialize Map
@@ -349,25 +377,54 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       }
     });
 
-    if (selectedProp && mapInstanceRef.current) {
-      mapInstanceRef.current.panTo({
-        lat: selectedProp.location.lat,
-        lng: selectedProp.location.lng
-      });
-    }
-  }, [selectedProp]);
-
-  // Handle drawing canvas sizing
-  useEffect(() => {
-    const canvas = error ? fallbackCanvasRef.current : drawingCanvasRef.current;
-    if (canvas) {
-      canvas.width = canvas.offsetWidth || 750;
-      canvas.height = canvas.offsetHeight || 480;
-      if (isDrawing) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (selectedProp) {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.panTo({
+          lat: selectedProp.location.lat,
+          lng: selectedProp.location.lng
+        });
+      } else if (error) {
+        setFallbackCenter({
+          lat: selectedProp.location.lat,
+          lng: selectedProp.location.lng
+        });
       }
     }
+  }, [selectedProp, error]);
+
+  // Handle drawing & fallback canvas resizing and responsiveness
+  useEffect(() => {
+    const canvas = error ? fallbackCanvasRef.current : drawingCanvasRef.current;
+    if (!canvas) return;
+
+    const handleResize = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        if (canvas.width !== rect.width || canvas.height !== rect.height) {
+          canvas.width = rect.width;
+          canvas.height = rect.height;
+          if (error) {
+            setRedrawTrigger(prev => prev + 1);
+          }
+        }
+      }
+    };
+
+    handleResize();
+
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+    resizeObserver.observe(canvas.parentElement || canvas);
+
+    if (isDrawing) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [isDrawing, error, loading]);
 
   // Dynamic canvas projection calculation for offline fallback mode
@@ -382,8 +439,8 @@ export default function MapExplorer({ properties, onSelectProperty }) {
     
     // If a fallback center is set, shift the canvas viewport accordingly
     if (fallbackCenter) {
-      const latDiff = maxLat - minLat || 0.02;
-      const lngDiff = maxLng - minLng || 0.02;
+      const latDiff = (maxLat - minLat || 0.02) / fallbackZoom;
+      const lngDiff = (maxLng - minLng || 0.02) / fallbackZoom;
       
       minLat = fallbackCenter.lat - latDiff / 2;
       maxLat = fallbackCenter.lat + latDiff / 2;
@@ -545,9 +602,9 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`₹${(prop.price / 100000).toFixed(0)}L`, x, y);
+      ctx.fillText(`Rs. ${(prop.price / 100000).toFixed(0)}L`, x, y);
     });
-  }, [filteredProperties, selectedProp, heatmapMode, rawPoints, isDrawingActive, error, fallbackCenter, userLocationFallback, searchedLocationFallback]);
+  }, [filteredProperties, selectedProp, heatmapMode, rawPoints, isDrawingActive, error, fallbackCenter, userLocationFallback, searchedLocationFallback, fallbackZoom, redrawTrigger]);
 
   // Fallback Canvas interactions
   const handleFallbackCanvasClick = (e) => {
@@ -654,7 +711,45 @@ export default function MapExplorer({ properties, onSelectProperty }) {
             animation: window.google.maps.Animation.DROP
           });
         } else {
-          alert("Location not found on Google Maps. Try typing a specific city or region name.");
+          // If Geocoding API fails/denied, check local database before alerting
+          const cleanedQuery = query.toLowerCase().trim();
+          let targetLoc = null;
+          for (const [city, coord] of Object.entries(fallbackCities)) {
+            if (cleanedQuery.includes(city) || city.includes(cleanedQuery)) {
+              targetLoc = coord;
+              break;
+            }
+          }
+
+          if (!targetLoc) {
+            const found = properties.find(p => 
+              p.title.toLowerCase().includes(cleanedQuery) ||
+              p.location?.address?.toLowerCase().includes(cleanedQuery) ||
+              p.location?.city?.toLowerCase().includes(cleanedQuery)
+            );
+            if (found) {
+              targetLoc = { lat: found.location.lat, lng: found.location.lng };
+            }
+          }
+
+          if (targetLoc) {
+            const googleLoc = new window.google.maps.LatLng(targetLoc.lat, targetLoc.lng);
+            mapInstanceRef.current.setCenter(googleLoc);
+            mapInstanceRef.current.setZoom(13);
+            
+            if (searchedLocationMarkerRef.current) {
+              searchedLocationMarkerRef.current.setMap(null);
+            }
+            
+            searchedLocationMarkerRef.current = new window.google.maps.Marker({
+              position: googleLoc,
+              map: mapInstanceRef.current,
+              title: query,
+              animation: window.google.maps.Animation.DROP
+            });
+          } else {
+            alert(`Location "${query}" not found. Try searching Kathmandu, Lalitpur, Pokhara, Chitwan or Butwal.`);
+          }
         }
       });
     } else {
@@ -684,7 +779,7 @@ export default function MapExplorer({ properties, onSelectProperty }) {
         setSearchedLocationFallback(targetLoc);
         setFallbackCenter(targetLoc);
       } else {
-        alert(`No results matched "${query}" in offline mode. Try searching Manhattan, Bandra, Mumbai or Worli.`);
+        alert(`No results matched "${query}" in offline mode. Try searching Kathmandu, Lalitpur, Pokhara, Chitwan or Butwal.`);
       }
     }
   };
@@ -879,7 +974,7 @@ export default function MapExplorer({ properties, onSelectProperty }) {
   };
 
   return (
-    <div className="w-full max-w-[1200px] mx-auto bg-white border border-border-subtle rounded-card p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-left pb-section-v">
+    <div className="w-full max-w-[1200px] mx-auto bg-white border border-border-subtle rounded-card p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-left">
       {/* Header and Action toolbar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
@@ -918,9 +1013,9 @@ export default function MapExplorer({ properties, onSelectProperty }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[360px_1fr] gap-6 h-[480px]">
+      <div className="grid grid-cols-1 md:grid-cols-[360px_1fr] gap-6 h-[720px] md:h-[520px]">
         {/* Left filtered listings sidebar */}
-        <div className="flex flex-col gap-3 overflow-y-auto pr-2 border-r border-border-subtle md:pr-4">
+        <div className="flex flex-col gap-3 h-[240px] md:h-auto overflow-y-auto pr-2 border-b md:border-b-0 md:border-r border-border-subtle pb-4 md:pb-0 md:pr-4">
           <div className="text-[12px] font-bold text-on-surface-variant uppercase tracking-wider pb-2 border-b border-border-subtle mb-1">
             {filteredProperties.length} PROPERTIES IN REGION
           </div>
@@ -955,7 +1050,7 @@ export default function MapExplorer({ properties, onSelectProperty }) {
                     {prop.title}
                   </h4>
                   <div className="text-[12px] text-on-surface-variant mt-1 font-medium">
-                    ₹{(prop.price / 100000).toFixed(0)}L | Match {prop.aiScore}%
+                    Rs. {(prop.price / 100000).toFixed(0)}L | {prop.type}
                   </div>
                 </div>
               </div>
@@ -964,7 +1059,7 @@ export default function MapExplorer({ properties, onSelectProperty }) {
         </div>
 
         {/* Right map display */}
-        <div className="relative rounded-card overflow-hidden border border-border-subtle h-full bg-surface-offwhite">
+        <div className="relative rounded-card overflow-hidden border border-border-subtle h-[420px] md:h-full bg-surface-offwhite">
           
           {/* Floating Location Search */}
           <div className="absolute top-4 left-4 z-10 w-[240px] md:w-[300px]">
@@ -992,9 +1087,29 @@ export default function MapExplorer({ properties, onSelectProperty }) {
             <Navigation size={18} className="fill-current" />
           </button>
 
-          {/* Offline Fallback Banner */}
+          {/* Zoom controls for offline fallback canvas map */}
           {error && (
-            <div className="absolute top-16 left-4 right-4 bg-amber-50/95 backdrop-blur border border-amber-200 text-amber-900 px-4 py-2 rounded-lg text-[12px] font-medium z-30 flex justify-between items-center shadow-sm">
+            <div className="absolute bottom-[160px] right-4 z-10 flex flex-col gap-2 animate-fade-in">
+              <button 
+                onClick={() => setFallbackZoom(prev => Math.min(prev + 0.5, 6))}
+                title="Zoom In"
+                className="bg-white/95 backdrop-blur border border-border-subtle w-9 h-9 flex items-center justify-center rounded-full shadow-md text-primary hover:text-accent-blue hover:bg-border-subtle transition-all cursor-pointer font-bold text-[16px]"
+              >
+                +
+              </button>
+              <button 
+                onClick={() => setFallbackZoom(prev => Math.max(prev - 0.5, 1))}
+                title="Zoom Out"
+                className="bg-white/95 backdrop-blur border border-border-subtle w-9 h-9 flex items-center justify-center rounded-full shadow-md text-primary hover:text-accent-blue hover:bg-border-subtle transition-all cursor-pointer font-bold text-[16px]"
+              >
+                −
+              </button>
+            </div>
+          )}
+
+          {/* Offline Fallback Banner */}
+          {error && !silentOffline && (
+            <div className="absolute top-16 left-4 right-4 bg-amber-50/95 backdrop-blur border border-amber-200 text-amber-900 px-4 py-2 rounded-lg text-[12px] font-medium z-30 flex justify-between items-center shadow-sm animate-fade-in">
               <div className="flex items-center gap-2">
                 <AlertCircle size={14} className="text-amber-600 flex-shrink-0" />
                 <span>Offline fallback map. Load error (check VITE_GOOGLE_MAPS_API_KEY).</span>
