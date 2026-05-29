@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Compass, Sparkles, MapPin, Eye, MousePointerClick, RefreshCw, Loader2, AlertCircle, Search, Navigation } from 'lucide-react';
 
-// Custom Map Styling to match the premium minimalist theme of Aetheria
+// Custom Map Styling to match the premium minimalist theme of Nepal Exchange Pvt. Ltd
 const mapStyles = [
   {
     "elementType": "geometry",
@@ -79,12 +79,99 @@ const fallbackCities = {
   "jhamsikhel": { lat: 27.6780, lng: 85.3122 },
   "baluwatar": { lat: 27.7172, lng: 85.3240 },
   "sanepa": { lat: 27.6780, lng: 85.3122 },
+  "kirtipur": { lat: 27.6797, lng: 85.2778 },
+  "thimi": { lat: 27.6772, lng: 85.3786 },
+  "banepa": { lat: 27.6297, lng: 85.5214 },
+  "dhulikhel": { lat: 27.6164, lng: 85.5386 },
   "pokhara": { lat: 28.2096, lng: 83.9856 },
   "chitwan": { lat: 27.6756, lng: 84.4284 },
   "bharatpur": { lat: 27.6756, lng: 84.4284 },
   "butwal": { lat: 27.7006, lng: 83.4484 },
+  "bhairahawa": { lat: 27.5019, lng: 83.4485 },
+  "nepalgunj": { lat: 28.0500, lng: 81.6167 },
+  "dhangadhi": { lat: 28.6847, lng: 80.6083 },
   "biratnagar": { lat: 26.4525, lng: 87.2718 },
-  "dharan": { lat: 26.8124, lng: 87.2834 }
+  "dharan": { lat: 26.8124, lng: 87.2834 },
+  "itahari": { lat: 26.6644, lng: 87.2718 },
+  "birgunj": { lat: 27.0122, lng: 84.8778 },
+  "janakpur": { lat: 26.7271, lng: 85.9220 },
+  "hetauda": { lat: 27.4264, lng: 85.0333 },
+  "birtamode": { lat: 26.6393, lng: 87.9798 },
+  "damak": { lat: 26.6689, lng: 87.6883 },
+  "ghorahi": { lat: 28.0264, lng: 82.4936 },
+  "tulsipur": { lat: 28.1287, lng: 82.2968 },
+  "kalaiya": { lat: 27.0272, lng: 84.9959 },
+  "lahan": { lat: 26.7167, lng: 86.4833 },
+  "ilam": { lat: 26.9113, lng: 87.9254 },
+  "bhadrapur": { lat: 26.5414, lng: 88.0833 },
+  "inaruwa": { lat: 26.6025, lng: 87.1517 },
+  "rajbiraj": { lat: 26.5411, lng: 86.7533 },
+  "siraha": { lat: 26.6547, lng: 86.2081 },
+  "gaighat": { lat: 26.7909, lng: 86.6977 },
+  "malangwa": { lat: 26.8583, lng: 85.5583 },
+  "jaleshwar": { lat: 26.6436, lng: 85.8017 },
+  "gaur": { lat: 26.7628, lng: 85.2636 },
+  "bidur": { lat: 27.9117, lng: 85.1611 },
+  "chautara": { lat: 27.7761, lng: 85.7161 },
+  "charikot": { lat: 27.6706, lng: 86.0717 },
+  "manthali": { lat: 27.3872, lng: 86.0642 },
+  "kamalamai": { lat: 27.2475, lng: 85.9233 },
+  "panauti": { lat: 27.5847, lng: 85.5186 },
+  "kaski": { lat: 28.2705, lng: 83.8964 },
+  "lekhnath": { lat: 28.1691, lng: 84.0536 },
+  "baglung": { lat: 28.2725, lng: 83.5908 },
+  "beni": { lat: 28.3444, lng: 83.5658 },
+  "kushma": { lat: 28.2239, lng: 83.6797 },
+  "waling": { lat: 27.9789, lng: 83.7667 },
+  "tansen": { lat: 27.8683, lng: 83.5483 },
+  "sandhikharka": { lat: 27.9897, lng: 83.0458 },
+  "tamghas": { lat: 28.0664, lng: 83.2500 },
+  "taulihawa": { lat: 27.5375, lng: 83.0533 },
+  "krishnanagar": { lat: 27.5028, lng: 82.8803 },
+  "kohalpur": { lat: 28.1925, lng: 81.6917 },
+  "gulariya": { lat: 28.2047, lng: 81.3364 },
+  "surkhet": { lat: 28.5989, lng: 81.6322 },
+  "birendranagar": { lat: 28.5989, lng: 81.6322 },
+  "dailekh": { lat: 28.8419, lng: 81.7064 },
+  "salyan": { lat: 28.3675, lng: 82.1644 },
+  "pyuthan": { lat: 28.1008, lng: 82.8683 },
+  "libang": { lat: 28.3039, lng: 82.6367 },
+  "musikot": { lat: 28.6364, lng: 82.4797 },
+  "jumla": { lat: 29.2747, lng: 82.1864 },
+  "dunai": { lat: 28.9867, lng: 82.9114 },
+  "simikot": { lat: 29.9678, lng: 81.8189 },
+  "gamgadhi": { lat: 29.5294, lng: 82.1683 },
+  "manang": { lat: 28.5522, lng: 84.2403 },
+  "jomsom": { lat: 28.7844, lng: 83.7297 },
+  "dadeldhura": { lat: 29.2978, lng: 80.5847 },
+  "baitadi": { lat: 29.4089, lng: 80.4897 },
+  "chainpur": { lat: 29.5539, lng: 81.2058 },
+  "martadi": { lat: 29.4544, lng: 81.3033 },
+  "dipayal": { lat: 29.2611, lng: 80.9392 },
+  "mangalsen": { lat: 29.1161, lng: 81.2658 },
+  "khalanga": { lat: 29.8456, lng: 80.5283 },
+  "tikapur": { lat: 28.5000, lng: 81.1167 },
+  "attariya": { lat: 28.7667, lng: 80.6667 },
+  "lamki": { lat: 28.5333, lng: 81.0167 },
+  "phidim": { lat: 27.1472, lng: 87.7556 },
+  "taplejung": { lat: 27.3517, lng: 87.6717 },
+  "dhankuta": { lat: 26.9808, lng: 87.3297 },
+  "bhojpur": { lat: 27.1706, lng: 87.0456 },
+  "khandbari": { lat: 27.3719, lng: 87.2069 },
+  "okhaldhunga": { lat: 27.3106, lng: 86.5056 },
+  "diktel": { lat: 27.2144, lng: 86.7903 },
+  "salleri": { lat: 27.2989, lng: 86.6214 },
+  "besisahar": { lat: 28.2272, lng: 84.3756 },
+  "sauraha": { lat: 27.5756, lng: 84.4983 },
+  "nagarkot": { lat: 27.7122, lng: 85.5217 },
+  "dhampus": { lat: 28.2983, lng: 83.8406 },
+  "bandipur": { lat: 27.9353, lng: 84.4147 },
+  "gorkha": { lat: 28.0022, lng: 84.6297 },
+  "lukla": { lat: 27.6878, lng: 86.7314 },
+  "namche": { lat: 27.8069, lng: 86.7144 },
+  "muktinath": { lat: 28.8164, lng: 83.8719 },
+  "swayambhu": { lat: 27.7149, lng: 85.2904 },
+  "boudha": { lat: 27.7215, lng: 85.3620 }
 };
 
 // Helper to load Google Maps API dynamically with visualization and geometry libraries
@@ -162,6 +249,12 @@ export default function MapExplorer({ properties, onSelectProperty }) {
   const [isDrawingActive, setIsDrawingActive] = useState(false);
   const [rawPoints, setRawPoints] = useState([]);
   
+  // Autocomplete search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const searchContainerRef = useRef(null);
+  
   const [filteredProperties, setFilteredProperties] = useState(properties);
   const [hasDrawnFilter, setHasDrawnFilter] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -229,6 +322,53 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       delete window.gm_authFailure;
     };
   }, []);
+
+  // Handle click outside of search container to close dropdown suggestions
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Filter suggestions when searchQuery updates
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    const clean = searchQuery.toLowerCase().trim();
+
+    // 1. Predefined fallback cities
+    const matchedCities = Object.keys(fallbackCities)
+      .filter(city => city.toLowerCase().includes(clean) || clean.includes(city.toLowerCase()))
+      .map(city => ({
+        type: 'city',
+        name: city.charAt(0).toUpperCase() + city.slice(1),
+        key: city
+      }));
+
+    // 2. Active property listings matching query text
+    const matchedProperties = properties
+      .filter(p => 
+        p.title.toLowerCase().includes(clean) ||
+        (p.location?.address && p.location.address.toLowerCase().includes(clean)) ||
+        (p.location?.city && p.location.city.toLowerCase().includes(clean))
+      )
+      .map(p => ({
+        type: 'property',
+        name: p.title,
+        property: p
+      }));
+
+    // Combine both suggestions lists
+    setSuggestions([...matchedCities, ...matchedProperties]);
+  }, [searchQuery, properties]);
 
   // Initialize Map
   useEffect(() => {
@@ -784,6 +924,39 @@ export default function MapExplorer({ properties, onSelectProperty }) {
     }
   };
 
+  // Handle suggestion click to center map / select property
+  const handleSuggestionClick = (suggestion) => {
+    setShowSuggestions(false);
+    if (suggestion.type === 'city') {
+      setSearchQuery(suggestion.name);
+      handleLocationSearch(suggestion.name);
+    } else if (suggestion.type === 'property') {
+      setSearchQuery(suggestion.name);
+      setSelectedProp(suggestion.property);
+      onSelectProperty(suggestion.property);
+
+      const targetLoc = { lat: suggestion.property.location.lat, lng: suggestion.property.location.lng };
+      if (window.google && mapInstanceRef.current && !error) {
+        const googleLoc = new window.google.maps.LatLng(targetLoc.lat, targetLoc.lng);
+        mapInstanceRef.current.setCenter(googleLoc);
+        mapInstanceRef.current.setZoom(14);
+
+        if (searchedLocationMarkerRef.current) {
+          searchedLocationMarkerRef.current.setMap(null);
+        }
+        searchedLocationMarkerRef.current = new window.google.maps.Marker({
+          position: googleLoc,
+          map: mapInstanceRef.current,
+          title: suggestion.property.title,
+          animation: window.google.maps.Animation.DROP
+        });
+      } else {
+        setSearchedLocationFallback(targetLoc);
+        setFallbackCenter(targetLoc);
+      }
+    }
+  };
+
   // Get Live Location geolocation trigger
   const handleLocateUser = () => {
     if (!navigator.geolocation) {
@@ -1062,20 +1235,54 @@ export default function MapExplorer({ properties, onSelectProperty }) {
         <div className="relative rounded-card overflow-hidden border border-border-subtle h-[420px] md:h-full bg-surface-offwhite">
           
           {/* Floating Location Search */}
-          <div className="absolute top-4 left-4 z-10 w-[240px] md:w-[300px]">
+          <div ref={searchContainerRef} className="absolute top-4 left-4 z-30 w-[240px] md:w-[300px]">
             <div className="relative">
               <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-on-surface-variant/70" />
               <input
                 type="text"
                 placeholder="Search location or city..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
                 className="w-full bg-white/95 backdrop-blur border border-border-subtle rounded-full py-2 pl-10 pr-4 focus:outline-none shadow-md text-[13px] text-primary focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/30"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleLocationSearch(e.target.value);
+                    setShowSuggestions(false);
                   }
                 }}
               />
             </div>
+
+            {/* Suggestions list menu */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-border-subtle rounded-2xl shadow-lg max-h-[250px] overflow-y-auto z-40 animate-fade-in divide-y divide-border-subtle/50">
+                {suggestions.map((suggestion, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent-blue/5 transition-colors cursor-pointer text-left"
+                  >
+                    {suggestion.type === 'city' ? (
+                      <Navigation size={14} className="text-accent-blue rotate-45 flex-shrink-0" />
+                    ) : (
+                      <MapPin size={14} className="text-accent-blue flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold text-primary truncate">
+                        {suggestion.name}
+                      </div>
+                      <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">
+                        {suggestion.type === 'city' ? 'City' : `Property | Rs. ${(suggestion.property.price / 100000).toFixed(0)}L`}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Locate User button */}

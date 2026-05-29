@@ -73,7 +73,7 @@ export default function Navbar({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
             }} 
             className="font-semibold text-[24px] leading-[1.25] text-primary cursor-pointer tracking-tight"
           >
-            Aetheria
+            Nepal Exchange
           </div>
 
           {/* Tab Links */}

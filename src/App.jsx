@@ -456,7 +456,7 @@ function AppContent() {
         <div className="max-w-[1200px] mx-auto px-gutter grid grid-cols-1 md:grid-cols-3 gap-10 text-left">
           {/* Brand & About */}
           <div className="space-y-4">
-            <div className="text-[24px] font-bold text-primary">Aetheria</div>
+            <div className="text-[24px] font-bold text-primary">Nepal Exchange Pvt. Ltd</div>
             <p className="text-[14px] text-on-surface-variant leading-relaxed font-medium">
               Your trusted partner for buying, selling, and renting properties across Nepal. 
               Serving Kathmandu Valley, Pokhara, Chitwan, and beyond.
@@ -516,11 +516,11 @@ function AppContent() {
               </div>
               <div className="flex items-center gap-3">
                 <Mail size={16} className="text-accent-blue flex-shrink-0" />
-                <span>info@aetheria.com.np</span>
+                <span>info@nepalexchange.com.np</span>
               </div>
             </div>
             <div className="mt-6 text-[13px] text-on-surface-variant opacity-70 font-medium">
-              © 2026 Aetheria Real Estate. All rights reserved.
+              © 2026 Nepal Exchange Pvt. Ltd. All rights reserved.
             </div>
           </div>
         </div>

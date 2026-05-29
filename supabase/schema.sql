@@ -188,3 +188,9 @@ VALUES
     'available'
   );
 */
+
+-- Grant storage schema permissions to standard client roles
+GRANT USAGE ON SCHEMA storage TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE storage.objects TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE storage.buckets TO postgres, anon, authenticated, service_role;
+

@@ -5,13 +5,140 @@ import {
   Trash2, ShieldCheck, Mail, Upload, Sparkles, Plus,
   TrendingUp, Calendar, Inbox, DollarSign, MoreHorizontal,
   Edit3, X, CheckCircle2, XCircle, Eye, ClipboardList,
-  Loader2, AlertTriangle
+  Loader2, AlertTriangle, MapPin, Search
 } from 'lucide-react';
 import {
   createProperty, updateProperty, deleteProperty,
   fetchInquiries, updateInquiryStatus,
   fetchSubmissions, approveSubmission, rejectSubmission, uploadImage
 } from '../lib/propertyService';
+// Predefined cities mapping for local geocoding lookup inside AdminPanel
+const adminCitiesLookup = {
+  "kathmandu": { lat: 27.7172, lng: 85.3240 },
+  "lalitpur": { lat: 27.6710, lng: 85.3122 },
+  "bhaktapur": { lat: 27.6710, lng: 85.4298 },
+  "jhamsikhel": { lat: 27.6780, lng: 85.3122 },
+  "baluwatar": { lat: 27.7172, lng: 85.3240 },
+  "sanepa": { lat: 27.6780, lng: 85.3122 },
+  "kirtipur": { lat: 27.6797, lng: 85.2778 },
+  "thimi": { lat: 27.6772, lng: 85.3786 },
+  "banepa": { lat: 27.6297, lng: 85.5214 },
+  "dhulikhel": { lat: 27.6164, lng: 85.5386 },
+  "pokhara": { lat: 28.2096, lng: 83.9856 },
+  "chitwan": { lat: 27.6756, lng: 84.4284 },
+  "bharatpur": { lat: 27.6756, lng: 84.4284 },
+  "butwal": { lat: 27.7006, lng: 83.4484 },
+  "bhairahawa": { lat: 27.5019, lng: 83.4485 },
+  "nepalgunj": { lat: 28.0500, lng: 81.6167 },
+  "dhangadhi": { lat: 28.6847, lng: 80.6083 },
+  "biratnagar": { lat: 26.4525, lng: 87.2718 },
+  "dharan": { lat: 26.8124, lng: 87.2834 },
+  "itahari": { lat: 26.6644, lng: 87.2718 },
+  "birgunj": { lat: 27.0122, lng: 84.8778 },
+  "janakpur": { lat: 26.7271, lng: 85.9220 },
+  "hetauda": { lat: 27.4264, lng: 85.0333 },
+  "birtamode": { lat: 26.6393, lng: 87.9798 },
+  "damak": { lat: 26.6689, lng: 87.6883 },
+  "ghorahi": { lat: 28.0264, lng: 82.4936 },
+  "tulsipur": { lat: 28.1287, lng: 82.2968 },
+  "kalaiya": { lat: 27.0272, lng: 84.9959 },
+  "lahan": { lat: 26.7167, lng: 86.4833 },
+  "ilam": { lat: 26.9113, lng: 87.9254 },
+  "bhadrapur": { lat: 26.5414, lng: 88.0833 },
+  "inaruwa": { lat: 26.6025, lng: 87.1517 },
+  "rajbiraj": { lat: 26.5411, lng: 86.7533 },
+  "siraha": { lat: 26.6547, lng: 86.2081 },
+  "gaighat": { lat: 26.7909, lng: 86.6977 },
+  "malangwa": { lat: 26.8583, lng: 85.5583 },
+  "jaleshwar": { lat: 26.6436, lng: 85.8017 },
+  "gaur": { lat: 26.7628, lng: 85.2636 },
+  "bidur": { lat: 27.9117, lng: 85.1611 },
+  "chautara": { lat: 27.7761, lng: 85.7161 },
+  "charikot": { lat: 27.6706, lng: 86.0717 },
+  "manthali": { lat: 27.3872, lng: 86.0642 },
+  "kamalamai": { lat: 27.2475, lng: 85.9233 },
+  "panauti": { lat: 27.5847, lng: 85.5186 },
+  "kaski": { lat: 28.2705, lng: 83.8964 },
+  "lekhnath": { lat: 28.1691, lng: 84.0536 },
+  "baglung": { lat: 28.2725, lng: 83.5908 },
+  "beni": { lat: 28.3444, lng: 83.5658 },
+  "kushma": { lat: 28.2239, lng: 83.6797 },
+  "waling": { lat: 27.9789, lng: 83.7667 },
+  "tansen": { lat: 27.8683, lng: 83.5483 },
+  "sandhikharka": { lat: 27.9897, lng: 83.0458 },
+  "tamghas": { lat: 28.0664, lng: 83.2500 },
+  "taulihawa": { lat: 27.5375, lng: 83.0533 },
+  "krishnanagar": { lat: 27.5028, lng: 82.8803 },
+  "kohalpur": { lat: 28.1925, lng: 81.6917 },
+  "gulariya": { lat: 28.2047, lng: 81.3364 },
+  "surkhet": { lat: 28.5989, lng: 81.6322 },
+  "birendranagar": { lat: 28.5989, lng: 81.6322 },
+  "dailekh": { lat: 28.8419, lng: 81.7064 },
+  "salyan": { lat: 28.3675, lng: 82.1644 },
+  "pyuthan": { lat: 28.1008, lng: 82.8683 },
+  "libang": { lat: 28.3039, lng: 82.6367 },
+  "musikot": { lat: 28.6364, lng: 82.4797 },
+  "jumla": { lat: 29.2747, lng: 82.1864 },
+  "dunai": { lat: 28.9867, lng: 82.9114 },
+  "simikot": { lat: 29.9678, lng: 81.8189 },
+  "gamgadhi": { lat: 29.5294, lng: 82.1683 },
+  "manang": { lat: 28.5522, lng: 84.2403 },
+  "jomsom": { lat: 28.7844, lng: 83.7297 },
+  "dadeldhura": { lat: 29.2978, lng: 80.5847 },
+  "baitadi": { lat: 29.4089, lng: 80.4897 },
+  "chainpur": { lat: 29.5539, lng: 81.2058 },
+  "martadi": { lat: 29.4544, lng: 81.3033 },
+  "dipayal": { lat: 29.2611, lng: 80.9392 },
+  "mangalsen": { lat: 29.1161, lng: 81.2658 },
+  "khalanga": { lat: 29.8456, lng: 80.5283 },
+  "tikapur": { lat: 28.5000, lng: 81.1167 },
+  "attariya": { lat: 28.7667, lng: 80.6667 },
+  "lamki": { lat: 28.5333, lng: 81.0167 },
+  "phidim": { lat: 27.1472, lng: 87.7556 },
+  "taplejung": { lat: 27.3517, lng: 87.6717 },
+  "dhankuta": { lat: 26.9808, lng: 87.3297 },
+  "bhojpur": { lat: 27.1706, lng: 87.0456 },
+  "khandbari": { lat: 27.3719, lng: 87.2069 },
+  "okhaldhunga": { lat: 27.3106, lng: 86.5056 },
+  "diktel": { lat: 27.2144, lng: 86.7903 },
+  "salleri": { lat: 27.2989, lng: 86.6214 },
+  "besisahar": { lat: 28.2272, lng: 84.3756 },
+  "sauraha": { lat: 27.5756, lng: 84.4983 },
+  "nagarkot": { lat: 27.7122, lng: 85.5217 },
+  "dhampus": { lat: 28.2983, lng: 83.8406 },
+  "bandipur": { lat: 27.9353, lng: 84.4147 },
+  "gorkha": { lat: 28.0022, lng: 84.6297 },
+  "lukla": { lat: 27.6878, lng: 86.7314 },
+  "namche": { lat: 27.8069, lng: 86.7144 },
+  "muktinath": { lat: 28.8164, lng: 83.8719 },
+  "swayambhu": { lat: 27.7149, lng: 85.2904 },
+  "boudha": { lat: 27.7215, lng: 85.3620 }
+};
+
+let googleMapsPromise = null;
+function loadGoogleMapsAPI(apiKey) {
+  if (googleMapsPromise) return googleMapsPromise;
+  googleMapsPromise = new Promise((resolve, reject) => {
+    if (window.google && window.google.maps) {
+      resolve(window.google.maps);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey || ''}&libraries=visualization,geometry`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google && window.google.maps) {
+        resolve(window.google.maps);
+      } else {
+        reject(new Error('Google Maps API failed to load.'));
+      }
+    };
+    script.onerror = (err) => reject(err);
+    document.head.appendChild(script);
+  });
+  return googleMapsPromise;
+}
 
 export default function AdminPanel({ properties, setProperties, agents, onPropertiesChange }) {
   const { user } = useAuth();
@@ -27,6 +154,156 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [editingId, setEditingId] = useState(null);
+
+  // Nepal Property Details & Location coordinates
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('Kathmandu');
+  const [district, setDistrict] = useState('Kathmandu');
+  const [lat, setLat] = useState('27.7172');
+  const [lng, setLng] = useState('85.3240');
+  const [roadAccess, setRoadAccess] = useState('');
+  const [facing, setFacing] = useState('');
+  const [builtYear, setBuiltYear] = useState('');
+
+  // Mini-map picker states & refs
+  const [mapError, setMapError] = useState(false);
+  const [mapLoading, setMapLoading] = useState(false);
+  const adminMapRef = React.useRef(null);
+  const adminMapInstanceRef = React.useRef(null);
+  const adminMarkerRef = React.useRef(null);
+
+  // Initialize and load Google Maps inside Admin Panel
+  useEffect(() => {
+    if (activeSubTab !== 'add') return;
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey || apiKey === 'placeholder' || apiKey.trim() === '') {
+      setMapError(true);
+      return;
+    }
+
+    setMapLoading(true);
+    setMapError(false);
+    loadGoogleMapsAPI(apiKey)
+      .then((google) => {
+        setMapLoading(false);
+        if (!adminMapRef.current) return;
+
+        const currentLat = parseFloat(lat) || 27.7172;
+        const currentLng = parseFloat(lng) || 85.3240;
+        const centerPos = { lat: currentLat, lng: currentLng };
+
+        const map = new google.maps.Map(adminMapRef.current, {
+          center: centerPos,
+          zoom: 14,
+          disableDefaultUI: true,
+          zoomControl: true,
+          styles: [
+            {
+              "elementType": "geometry",
+              "stylers": [{ "color": "#f5f5f7" }]
+            },
+            {
+              "elementType": "labels.icon",
+              "stylers": [{ "visibility": "off" }]
+            }
+          ]
+        });
+
+        adminMapInstanceRef.current = map;
+
+        const marker = new google.maps.Marker({
+          position: centerPos,
+          map: map,
+          draggable: true,
+          title: "Drag to set location"
+        });
+
+        adminMarkerRef.current = marker;
+
+        // Map Click updates coordinates and marker
+        map.addListener('click', (e) => {
+          const clickPos = e.latLng;
+          marker.setPosition(clickPos);
+          setLat(String(clickPos.lat().toFixed(6)));
+          setLng(String(clickPos.lng().toFixed(6)));
+        });
+
+        // Marker Drag updates coordinates
+        marker.addListener('dragend', () => {
+          const dragPos = marker.getPosition();
+          setLat(String(dragPos.lat().toFixed(6)));
+          setLng(String(dragPos.lng().toFixed(6)));
+        });
+      })
+      .catch((err) => {
+        console.warn("Failed to load Google Maps inside AdminPanel:", err);
+        setMapError(true);
+        setMapLoading(false);
+      });
+
+    return () => {
+      adminMapInstanceRef.current = null;
+      adminMarkerRef.current = null;
+    };
+  }, [activeSubTab]);
+
+  // Sync marker position when lat/lng inputs change manually
+  useEffect(() => {
+    if (adminMapInstanceRef.current && adminMarkerRef.current) {
+      const currentLat = parseFloat(lat);
+      const currentLng = parseFloat(lng);
+      if (!isNaN(currentLat) && !isNaN(currentLng)) {
+        const newPos = { lat: currentLat, lng: currentLng };
+        adminMarkerRef.current.setPosition(newPos);
+        adminMapInstanceRef.current.panTo(newPos);
+      }
+    }
+  }, [lat, lng]);
+
+  const handleGeocodeLookup = () => {
+    const query = `${address}, ${city}`.trim();
+    if (!query) {
+      showToast('Please type an address or city first.', 'error');
+      return;
+    }
+
+    if (window.google && window.google.maps && !mapError) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ address: query }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          const loc = results[0].geometry.location;
+          setLat(String(loc.lat().toFixed(6)));
+          setLng(String(loc.lng().toFixed(6)));
+          showToast('Location coordinates resolved!');
+        } else {
+          fallbackGeocodeLookup();
+        }
+      });
+    } else {
+      fallbackGeocodeLookup();
+    }
+  };
+
+  const fallbackGeocodeLookup = () => {
+    const cleanedQuery = `${address} ${city}`.toLowerCase().trim();
+    let targetLoc = null;
+    
+    for (const [key, coord] of Object.entries(adminCitiesLookup)) {
+      if (cleanedQuery.includes(key) || key.includes(cleanedQuery)) {
+        targetLoc = coord;
+        break;
+      }
+    }
+
+    if (targetLoc) {
+      setLat(String(targetLoc.lat.toFixed(6)));
+      setLng(String(targetLoc.lng.toFixed(6)));
+      showToast('Resolved to nearest city center coordinates.');
+    } else {
+      showToast('Could not resolve. Please enter coordinates manually.', 'error');
+    }
+  };
 
 
 
@@ -116,6 +393,20 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
         }
       }
 
+      const ropaniBreakdown = sqftToRopaniBreakdown(parseInt(area) || 0);
+      const [r, a, p, d] = ropaniBreakdown.split('-').map(Number);
+      const areaLocal = { ropani: r, aana: a, paisa: p, dam: d, sqft: parseInt(area) || 0 };
+
+      const locationData = {
+        lat: parseFloat(lat) || 27.7172,
+        lng: parseFloat(lng) || 85.3240,
+        address: address || 'Baluwatar Road',
+        city: city || 'Kathmandu',
+        district: district || 'Kathmandu',
+        state: 'Bagmati',
+        zip: '44600'
+      };
+
       if (editingId) {
         // UPDATE existing property
         await updateProperty(editingId, {
@@ -123,6 +414,11 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
           price: parseFloat(price) * 100000,
           tagline,
           image: finalImageUrl,
+          location: locationData,
+          roadAccess,
+          facing,
+          builtYear: parseInt(builtYear) || null,
+          areaLocal,
           details: {
             bedrooms: parseInt(bedrooms),
             bathrooms: Math.ceil(parseInt(bedrooms) * 0.9),
@@ -139,6 +435,11 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
           price: parseFloat(price) * 100000,
           tagline,
           image: finalImageUrl,
+          location: locationData,
+          roadAccess,
+          facing,
+          builtYear: parseInt(builtYear) || null,
+          areaLocal,
           details: {
             bedrooms: parseInt(bedrooms),
             bathrooms: Math.ceil(parseInt(bedrooms) * 0.9),
@@ -173,6 +474,16 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
     setImageFile(null);
     setImagePreview('');
     setEditingId(null);
+
+    // Nepal specifications
+    setAddress('');
+    setCity('Kathmandu');
+    setDistrict('Kathmandu');
+    setLat('27.7172');
+    setLng('85.3240');
+    setRoadAccess('');
+    setFacing('');
+    setBuiltYear('');
   };
 
   // Start editing a property
@@ -186,6 +497,17 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
     setImage(prop.image || '');
     setImagePreview('');
     setImageFile(null);
+
+    // Load location and Nepal specifications
+    setAddress(prop.location?.address || '');
+    setCity(prop.location?.city || 'Kathmandu');
+    setDistrict(prop.location?.district || 'Kathmandu');
+    setLat(String(prop.location?.lat || '27.7172'));
+    setLng(String(prop.location?.lng || '85.3240'));
+    setRoadAccess(prop.roadAccess || '');
+    setFacing(prop.facing || '');
+    setBuiltYear(prop.builtYear ? String(prop.builtYear) : '');
+
     setActiveSubTab('add');
   };
 
@@ -211,11 +533,11 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
     setSelectedInquiry(inquiry);
     let draft = "";
     if (inquiry.property.includes("Helix") || inquiry.property.includes("Penthouse")) {
-      draft = `Dear ${inquiry.name},\n\nRegarding the Helix Penthouse: Yes, we can coordinate a private VR showing. I have availability tomorrow at 2:00 PM. Please confirm if that slot works for you.\n\nWarm regards,\nJulian Thorne\nAetheria Brokerage Team`;
+      draft = `Dear ${inquiry.name},\n\nRegarding the Helix Penthouse: Yes, we can coordinate a private VR showing. I have availability tomorrow at 2:00 PM. Please confirm if that slot works for you.\n\nWarm regards,\nJulian Thorne\nNepal Exchange Pvt. Ltd`;
     } else if (inquiry.property.includes("Emerald")) {
       draft = `Dear ${inquiry.name},\n\nThe Emerald Estates Villa 4 features pre-installed solar connections and allows simple battery retrofits up to 40 kW.\n\nWarm regards,\nAlex Rivera\nLuxury Consultant`;
     } else {
-      draft = `Dear ${inquiry.name},\n\nThank you for reaching out. Let us schedule a direct conversation node to review terms for the ${inquiry.property}.\n\nWarm regards,\nAetheria Team`;
+      draft = `Dear ${inquiry.name},\n\nThank you for reaching out. Let us schedule a direct conversation node to review terms for the ${inquiry.property}.\n\nWarm regards,\nNepal Exchange Pvt. Ltd`;
     }
     setAiDraftText(draft);
   };
@@ -378,7 +700,7 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
             </div>
             <div className="flex flex-col overflow-hidden">
               <span className="text-[14px] font-bold text-primary truncate">{user?.email?.split('@')[0] || 'Agent'}</span>
-              <span className="text-[12px] text-on-surface-variant font-medium truncate">{user?.email || 'agent@aetheria.com'}</span>
+              <span className="text-[12px] text-on-surface-variant font-medium truncate">{user?.email || 'agent@nepalexchange.com.np'}</span>
             </div>
           </div>
         </div>
@@ -618,6 +940,135 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
                     <img src={imagePreview || image} alt="Preview" className="w-full h-40 object-cover" />
                   </div>
                 )}
+
+                {/* Nepal Property Specifications */}
+                <div className="border-t border-border-subtle pt-4 mt-2 text-left">
+                  <h3 className="text-[14px] font-bold text-primary mb-3">Nepal Specifications</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[13px] font-semibold text-on-surface-variant">Road Access (e.g. 13ft, 20ft)</label>
+                      <input 
+                        type="text" 
+                        value={roadAccess} 
+                        onChange={e => setRoadAccess(e.target.value)} 
+                        placeholder="e.g. 13ft" 
+                        className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-[8px] text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue" 
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[13px] font-semibold text-on-surface-variant">Facing Direction</label>
+                      <input 
+                        type="text" 
+                        value={facing} 
+                        onChange={e => setFacing(e.target.value)} 
+                        placeholder="e.g. East" 
+                        className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-[8px] text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue" 
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[13px] font-semibold text-on-surface-variant">Built Year</label>
+                      <input 
+                        type="number" 
+                        value={builtYear} 
+                        onChange={e => setBuiltYear(e.target.value)} 
+                        placeholder="e.g. 2022" 
+                        className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-[8px] text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location and Map Pinning */}
+                <div className="border-t border-border-subtle pt-4 text-left">
+                  <h3 className="text-[14px] font-bold text-primary mb-3">Location & Map Pinning</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[13px] font-semibold text-on-surface-variant">Street Address / Local Area</label>
+                      <input 
+                        type="text" 
+                        value={address} 
+                        onChange={e => setAddress(e.target.value)} 
+                        placeholder="e.g. Baluwatar Marg" 
+                        className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-[8px] text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue" 
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[13px] font-semibold text-on-surface-variant">City</label>
+                      <select 
+                        value={city} 
+                        onChange={e => setCity(e.target.value)} 
+                        className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-[8px] text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue" 
+                      >
+                        <option value="">Select a city...</option>
+                        {Object.keys(adminCitiesLookup).sort().map((cityName) => (
+                          <option key={cityName} value={cityName}>
+                            {cityName.charAt(0).toUpperCase() + cityName.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[13px] font-semibold text-on-surface-variant">District</label>
+                      <input 
+                        type="text" 
+                        value={district} 
+                        onChange={e => setDistrict(e.target.value)} 
+                        placeholder="e.g. Kathmandu" 
+                        className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-[8px] text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue" 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 mt-3 items-end">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[13px] font-semibold text-on-surface-variant">Latitude</label>
+                      <input 
+                        type="text" 
+                        value={lat} 
+                        onChange={e => setLat(e.target.value)} 
+                        className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-[8px] text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue" 
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[13px] font-semibold text-on-surface-variant">Longitude</label>
+                      <input 
+                        type="text" 
+                        value={lng} 
+                        onChange={e => setLng(e.target.value)} 
+                        className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-[8px] text-[15px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue" 
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGeocodeLookup}
+                      className="h-11 px-6 bg-surface-offwhite hover:bg-border-subtle text-primary border border-border-strong rounded-full text-[13px] font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                    >
+                      <Search size={14} className="text-accent-blue" />
+                      Get Coordinates
+                    </button>
+                  </div>
+
+                  {/* Interactive Mini-map location picker */}
+                  <div className="w-full h-[220px] rounded-lg border border-border-subtle bg-surface-offwhite mt-4 relative overflow-hidden">
+                    {mapLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10 gap-2">
+                        <Loader2 size={18} className="animate-spin text-accent-blue" />
+                        <span className="text-[12px] font-semibold text-primary">Loading Map...</span>
+                      </div>
+                    )}
+                    {mapError ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 bg-surface-offwhite">
+                        <MapPin size={24} className="text-accent-blue mb-1" />
+                        <span className="text-[13px] font-bold text-primary">Offline Map Grid Mode</span>
+                        <span className="text-[11px] text-on-surface-variant mt-0.5">
+                          Set coordinates manually above or search address.
+                        </span>
+                      </div>
+                    ) : (
+                      <div ref={adminMapRef} className="w-full h-full" />
+                    )}
+                  </div>
+                </div>
 
                 <div className="flex flex-col gap-2">
                   <label className="text-[14px] font-semibold text-on-surface-variant">Brief Description</label>

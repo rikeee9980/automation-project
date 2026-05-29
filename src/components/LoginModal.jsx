@@ -104,7 +104,7 @@ export default function LoginModal({ isOpen, onClose }) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="agent@aetheria.com"
+                placeholder="agent@nepalexchange.com.np"
                 required
                 className="w-full h-11 px-4 bg-surface-offwhite border border-border-strong rounded-xl text-[15px] text-primary placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-accent-blue/30 focus:border-accent-blue transition-all"
               />

@@ -193,7 +193,7 @@ export default function InquiryModal({ isOpen, onClose, property }) {
 
               {/* Disclaimer */}
               <p className="text-[11px] text-on-surface-variant/70 leading-relaxed font-medium mt-1">
-                By submitting this inquiry, you agree to connect with Aetheria's advisory team regarding this property and future portfolios matching your interests.
+                By submitting this inquiry, you agree to connect with Nepal Exchange Pvt. Ltd's advisory team regarding this property and future portfolios matching your interests.
               </p>
 
               {/* Submit Button */}

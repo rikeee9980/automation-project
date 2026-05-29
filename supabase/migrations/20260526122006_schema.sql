@@ -83,6 +83,16 @@ CREATE POLICY "Authenticated users can update properties"
   ON properties FOR UPDATE
   USING (auth.role() = 'authenticated');
 
+-- Grant table permissions to public roles (postgres, anon, authenticated, service_role)
+GRANT ALL ON TABLE submissions TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE properties TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE inquiries TO postgres, anon, authenticated, service_role;
+
+-- Grant storage schema permissions to standard client roles
+GRANT USAGE ON SCHEMA storage TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE storage.objects TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE storage.buckets TO postgres, anon, authenticated, service_role;
+
 CREATE POLICY "Authenticated users can delete properties"
   ON properties FOR DELETE
   USING (auth.role() = 'authenticated');
