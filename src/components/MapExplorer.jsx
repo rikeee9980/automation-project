@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Compass, Sparkles, MapPin, Eye, MousePointerClick, RefreshCw, Loader2, AlertCircle, Search, Navigation } from 'lucide-react';
+import { Compass, Sparkles, MapPin, Eye, MousePointerClick, RefreshCw, Loader2, AlertCircle, Search, Navigation, User } from 'lucide-react';
 
 // Custom Map Styling to match the premium minimalist theme of Nepal Exchange Pvt. Ltd
 const mapStyles = [
@@ -200,12 +200,12 @@ function loadGoogleMapsAPI(apiKey) {
   return googleMapsPromise;
 }
 
-// Function to generate the premium custom SVG listing price pill marker
+// Function to generate the premium custom SVG listing price pill marker (Pink Scheme)
 function createPricePillSvg(price, isSelected) {
   const priceText = `Rs. ${(price / 100000).toFixed(0)}L`;
-  const bg = isSelected ? '#0071e3' : '#ffffff';
-  const text = isSelected ? '#ffffff' : '#1d1d1f';
-  const strokeColor = isSelected ? '#0071e3' : '#e5e5ea';
+  const bg = isSelected ? '#e91e8f' : '#ffffff';
+  const text = isSelected ? '#ffffff' : '#e91e8f';
+  const strokeColor = isSelected ? '#e91e8f' : '#fbcfe8';
   
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="90" height="36" viewBox="0 0 90 36">
@@ -225,13 +225,43 @@ function createPricePillSvg(price, isSelected) {
   return 'data:image/svg+xml;utf-8,' + encodeURIComponent(svg.trim());
 }
 
+// Function to generate the premium custom SVG buyer demand budget pill marker (Blue Scheme)
+function createDemandPillSvg(minPrice, maxPrice, isSelected) {
+  const minL = (minPrice / 100000).toFixed(0);
+  const maxL = (maxPrice / 100000).toFixed(0);
+  const priceText = minL === maxL ? `Rs. ${minL}L` : `${minL}-${maxL}L`;
+  const bg = isSelected ? '#0071e3' : '#ffffff';
+  const text = isSelected ? '#ffffff' : '#0071e3';
+  const strokeColor = isSelected ? '#0071e3' : '#bfdbfe';
+  
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="90" height="36" viewBox="0 0 90 36">
+      <filter id="shadow" x="0" y="0" width="100%" height="100%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-opacity="0.1" flood-color="#000" />
+      </filter>
+      <g filter="url(#shadow)">
+        <rect x="7" y="2" width="76" height="24" rx="12" fill="${bg}" stroke="${strokeColor}" stroke-width="1" />
+        <path d="M41,26 L45,30 L49,26 Z" fill="${bg}" stroke="${strokeColor}" stroke-width="1" />
+        <path d="M42,25.5 L48,25.5 Z" stroke="${bg}" stroke-width="1.5" />
+      </g>
+      <text x="45" y="14" fill="${text}" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="10px" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+        ${priceText}
+      </text>
+    </svg>
+  `;
+  return 'data:image/svg+xml;utf-8,' + encodeURIComponent(svg.trim());
+}
+
 // Point-in-polygon helper using ray-casting algorithm for fallback drawing search
 function isPointInPolygon(point, polygon) {
   const x = point.x, y = point.y;
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i].x, yi = polygon[i].y;
-    const xj = polygon[j].x, yj = polygon[j].y;
+    const ptI = polygon.at(i);
+    const ptJ = polygon.at(j);
+    if (!ptI || !ptJ) continue;
+    const xi = ptI.x, yi = ptI.y;
+    const xj = ptJ.x, yj = ptJ.y;
     
     const intersect = ((yi > y) !== (yj > y))
         && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
@@ -240,8 +270,14 @@ function isPointInPolygon(point, polygon) {
   return inside;
 }
 
-export default function MapExplorer({ properties, onSelectProperty }) {
+export default function MapExplorer({ properties, onSelectProperty, demands = [] }) {
   const [selectedProp, setSelectedProp] = useState(properties[0]);
+  const [selectedDemand, setSelectedDemand] = useState(null);
+  
+  // Layer Toggles
+  const [showSeller, setShowSeller] = useState(true);
+  const [showBuyer, setShowBuyer] = useState(false);
+  
   const [heatmapMode, setHeatmapMode] = useState(false);
   
   // Custom drawing states
@@ -256,6 +292,7 @@ export default function MapExplorer({ properties, onSelectProperty }) {
   const searchContainerRef = useRef(null);
   
   const [filteredProperties, setFilteredProperties] = useState(properties);
+  const [filteredDemands, setFilteredDemands] = useState(demands);
   const [hasDrawnFilter, setHasDrawnFilter] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -411,27 +448,40 @@ export default function MapExplorer({ properties, onSelectProperty }) {
     };
   }, [loading, error]);
 
-  // Sync state if property data updates from parent service
+  // Sync state if property and demands data updates from parent service
   useEffect(() => {
     if (hasDrawnFilter && drawingPolygonRef.current && window.google) {
       const google = window.google;
-      const matched = properties.filter(prop => {
+      const matchedProps = properties.filter(prop => {
         if (!prop.location?.lat || !prop.location?.lng) return false;
         const pt = new google.maps.LatLng(prop.location.lat, prop.location.lng);
         return google.maps.geometry.poly.containsLocation(pt, drawingPolygonRef.current);
       });
-      setFilteredProperties(matched);
+      setFilteredProperties(matchedProps);
+
+      const matchedDemands = demands.filter(d => {
+        if (!d.lat || !d.lng) return false;
+        const pt = new google.maps.LatLng(d.lat, d.lng);
+        return google.maps.geometry.poly.containsLocation(pt, drawingPolygonRef.current);
+      });
+      setFilteredDemands(matchedDemands);
     } else if (!hasDrawnFilter) {
       setFilteredProperties(properties);
+      setFilteredDemands(demands);
     }
 
     if (properties.length > 0) {
       const matchedSelected = properties.find(p => p.id === selectedProp?.id) || properties[0];
       setSelectedProp(matchedSelected);
     }
-  }, [properties]);
+    
+    if (demands.length > 0) {
+      const matchedSelectedDemand = demands.find(d => d.id === selectedDemand?.id) || null;
+      setSelectedDemand(matchedSelectedDemand);
+    }
+  }, [properties, demands, hasDrawnFilter]);
 
-  // Redraw Markers and Heatmap Layer when properties or heatmap mode changes
+  // Redraw Markers and Heatmap Layer when properties, demands, heatmap mode, showSeller, or showBuyer changes
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !window.google) return;
@@ -446,7 +496,8 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       heatmapLayerRef.current = null;
     }
 
-    if (heatmapMode) {
+    // Heatmap showing properties
+    if (heatmapMode && showSeller) {
       const heatmapData = filteredProperties.map(p => ({
         location: new google.maps.LatLng(p.location.lat, p.location.lng),
         weight: p.price / 100000
@@ -470,50 +521,102 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       heatmapLayerRef.current = heatmap;
     }
 
-    filteredProperties.forEach(prop => {
-      if (!prop.location?.lat || !prop.location?.lng) return;
+    // Render Seller listing markers (pink)
+    if (showSeller) {
+      filteredProperties.forEach(prop => {
+        if (!prop.location?.lat || !prop.location?.lng) return;
 
-      const isSelected = selectedProp && selectedProp.id === prop.id;
-      const iconSvg = createPricePillSvg(prop.price, isSelected);
+        const isSelected = selectedProp && selectedProp.id === prop.id;
+        const iconSvg = createPricePillSvg(prop.price, isSelected);
 
-      const marker = new google.maps.Marker({
-        position: { lat: prop.location.lat, lng: prop.location.lng },
-        map: map,
-        title: prop.title,
-        icon: {
-          url: iconSvg,
-          scaledSize: new google.maps.Size(90, 36),
-          anchor: new google.maps.Point(45, 30)
-        },
-        zIndex: isSelected ? 1000 : 1
+        const marker = new google.maps.Marker({
+          position: { lat: prop.location.lat, lng: prop.location.lng },
+          map: map,
+          title: prop.title,
+          icon: {
+            url: iconSvg,
+            scaledSize: new google.maps.Size(90, 36),
+            anchor: new google.maps.Point(45, 30)
+          },
+          zIndex: isSelected ? 1000 : 1
+        });
+
+        marker.set('propId', prop.id);
+
+        marker.addListener('click', () => {
+          setSelectedProp(prop);
+          setSelectedDemand(null);
+          onSelectProperty(prop);
+        });
+
+        markersRef.current.push(marker);
       });
+    }
 
-      marker.set('propId', prop.id);
+    // Render Buyer demand markers (blue)
+    if (showBuyer) {
+      filteredDemands.forEach(demand => {
+        if (!demand.lat || !demand.lng) return;
 
-      marker.addListener('click', () => {
-        setSelectedProp(prop);
-        onSelectProperty(prop);
+        const isSelected = selectedDemand && selectedDemand.id === demand.id;
+        const iconSvg = createDemandPillSvg(demand.minPrice, demand.maxPrice, isSelected);
+
+        const marker = new google.maps.Marker({
+          position: { lat: demand.lat, lng: demand.lng },
+          map: map,
+          title: `Demand by ${demand.buyerName}`,
+          icon: {
+            url: iconSvg,
+            scaledSize: new google.maps.Size(90, 36),
+            anchor: new google.maps.Point(45, 30)
+          },
+          zIndex: isSelected ? 1000 : 1
+        });
+
+        marker.set('demandId', demand.id);
+
+        marker.addListener('click', () => {
+          setSelectedDemand(demand);
+          setSelectedProp(null);
+        });
+
+        markersRef.current.push(marker);
       });
-
-      markersRef.current.push(marker);
-    });
-  }, [filteredProperties, heatmapMode, loading]);
+    }
+  }, [filteredProperties, filteredDemands, heatmapMode, showSeller, showBuyer, loading]);
 
   // Sync selected pin styling when selection shifts
   useEffect(() => {
     if (!window.google) return;
     markersRef.current.forEach(marker => {
       const propId = marker.get('propId');
-      const isSelected = selectedProp && selectedProp.id === propId;
-      const prop = properties.find(p => p.id === propId);
-      if (prop) {
-        const iconSvg = createPricePillSvg(prop.price, isSelected);
-        marker.setIcon({
-          url: iconSvg,
-          scaledSize: new window.google.maps.Size(90, 36),
-          anchor: new window.google.maps.Point(45, 30)
-        });
-        marker.setZIndex(isSelected ? 1000 : 1);
+      if (propId) {
+        const isSelected = selectedProp && selectedProp.id === propId;
+        const prop = properties.find(p => p.id === propId);
+        if (prop) {
+          const iconSvg = createPricePillSvg(prop.price, isSelected);
+          marker.setIcon({
+            url: iconSvg,
+            scaledSize: new window.google.maps.Size(90, 36),
+            anchor: new window.google.maps.Point(45, 30)
+          });
+          marker.setZIndex(isSelected ? 1000 : 1);
+        }
+      }
+
+      const demandId = marker.get('demandId');
+      if (demandId) {
+        const isSelected = selectedDemand && selectedDemand.id === demandId;
+        const d = demands.find(item => item.id === demandId);
+        if (d) {
+          const iconSvg = createDemandPillSvg(d.minPrice, d.maxPrice, isSelected);
+          marker.setIcon({
+            url: iconSvg,
+            scaledSize: new window.google.maps.Size(90, 36),
+            anchor: new window.google.maps.Point(45, 30)
+          });
+          marker.setZIndex(isSelected ? 1000 : 1);
+        }
       }
     });
 
@@ -529,8 +632,20 @@ export default function MapExplorer({ properties, onSelectProperty }) {
           lng: selectedProp.location.lng
         });
       }
+    } else if (selectedDemand) {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.panTo({
+          lat: selectedDemand.lat,
+          lng: selectedDemand.lng
+        });
+      } else if (error) {
+        setFallbackCenter({
+          lat: selectedDemand.lat,
+          lng: selectedDemand.lng
+        });
+      }
     }
-  }, [selectedProp, error]);
+  }, [selectedProp, selectedDemand, error]);
 
   // Handle drawing & fallback canvas resizing and responsiveness
   useEffect(() => {
@@ -630,7 +745,7 @@ export default function MapExplorer({ properties, onSelectProperty }) {
     }
 
     // Heatmap mode on fallback canvas
-    if (heatmapMode) {
+    if (heatmapMode && showSeller) {
       filteredProperties.forEach(p => {
         if (!p.location?.lat || !p.location?.lng) return;
         const { x, y } = getCanvasCoords(p.location.lat, p.location.lng, width, height);
@@ -652,9 +767,15 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 4]);
       
-      ctx.moveTo(rawPoints[0].x, rawPoints[0].y);
-      for (let i = 1; i < rawPoints.length; i++) {
-        ctx.lineTo(rawPoints[i].x, rawPoints[i].y);
+      const firstPt = rawPoints.at(0);
+      if (firstPt) {
+        ctx.moveTo(firstPt.x, firstPt.y);
+        for (let i = 1; i < rawPoints.length; i++) {
+          const pt = rawPoints.at(i);
+          if (pt) {
+            ctx.lineTo(pt.x, pt.y);
+          }
+        }
       }
 
       if (!isDrawingActive && rawPoints.length > 2) {
@@ -701,50 +822,102 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       ctx.fill();
     }
 
-    // Custom price pill markers on fallback canvas
-    filteredProperties.forEach(prop => {
-      if (!prop.location?.lat || !prop.location?.lng) return;
-      const { x, y } = getCanvasCoords(prop.location.lat, prop.location.lng, width, height);
-      const isSelected = selectedProp && selectedProp.id === prop.id;
+    // Custom price pill markers on fallback canvas (Pink Listings)
+    if (showSeller) {
+      filteredProperties.forEach(prop => {
+        if (!prop.location?.lat || !prop.location?.lng) return;
+        const { x, y } = getCanvasCoords(prop.location.lat, prop.location.lng, width, height);
+        const isSelected = selectedProp && selectedProp.id === prop.id;
 
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetY = 2;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 2;
 
-      ctx.fillStyle = isSelected ? '#0071e3' : '#ffffff';
-      ctx.strokeStyle = isSelected ? '#0071e3' : '#e5e5ea';
-      ctx.lineWidth = 1.2;
-      
-      const pillWidth = 72;
-      const pillHeight = 24;
-      const rx = x - pillWidth / 2;
-      const ry = y - pillHeight / 2;
+        ctx.fillStyle = isSelected ? '#e91e8f' : '#ffffff';
+        ctx.strokeStyle = isSelected ? '#e91e8f' : '#fbcfe8';
+        ctx.lineWidth = 1.2;
+        
+        const pillWidth = 72;
+        const pillHeight = 24;
+        const rx = x - pillWidth / 2;
+        const ry = y - pillHeight / 2;
 
-      ctx.beginPath();
-      ctx.roundRect(rx, ry, pillWidth, pillHeight, 12);
-      ctx.fill();
-      ctx.stroke();
+        ctx.beginPath();
+        ctx.roundRect(rx, ry, pillWidth, pillHeight, 12);
+        ctx.fill();
+        ctx.stroke();
 
-      ctx.beginPath();
-      ctx.moveTo(x - 4, ry + pillHeight);
-      ctx.lineTo(x, ry + pillHeight + 4);
-      ctx.lineTo(x + 4, ry + pillHeight);
-      ctx.closePath();
-      ctx.fillStyle = isSelected ? '#0071e3' : '#ffffff';
-      ctx.fill();
-      ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - 4, ry + pillHeight);
+        ctx.lineTo(x, ry + pillHeight + 4);
+        ctx.lineTo(x + 4, ry + pillHeight);
+        ctx.closePath();
+        ctx.fillStyle = isSelected ? '#e91e8f' : '#ffffff';
+        ctx.fill();
+        ctx.stroke();
 
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
 
-      ctx.fillStyle = isSelected ? '#ffffff' : '#1d1d1f';
-      ctx.font = 'bold 11px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`Rs. ${(prop.price / 100000).toFixed(0)}L`, x, y);
-    });
-  }, [filteredProperties, selectedProp, heatmapMode, rawPoints, isDrawingActive, error, fallbackCenter, userLocationFallback, searchedLocationFallback, fallbackZoom, redrawTrigger]);
+        ctx.fillStyle = isSelected ? '#ffffff' : '#e91e8f';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`Rs. ${(prop.price / 100000).toFixed(0)}L`, x, y);
+      });
+    }
+
+    // Custom demand pill markers on fallback canvas (Blue Demands)
+    if (showBuyer) {
+      filteredDemands.forEach(d => {
+        if (!d.lat || !d.lng) return;
+        const { x, y } = getCanvasCoords(d.lat, d.lng, width, height);
+        const isSelected = selectedDemand && selectedDemand.id === d.id;
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 2;
+
+        ctx.fillStyle = isSelected ? '#0071e3' : '#ffffff';
+        ctx.strokeStyle = isSelected ? '#0071e3' : '#bfdbfe';
+        ctx.lineWidth = 1.2;
+        
+        const pillWidth = 72;
+        const pillHeight = 24;
+        const rx = x - pillWidth / 2;
+        const ry = y - pillHeight / 2;
+
+        ctx.beginPath();
+        ctx.roundRect(rx, ry, pillWidth, pillHeight, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x - 4, ry + pillHeight);
+        ctx.lineTo(x, ry + pillHeight + 4);
+        ctx.lineTo(x + 4, ry + pillHeight);
+        ctx.closePath();
+        ctx.fillStyle = isSelected ? '#0071e3' : '#ffffff';
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+
+        ctx.fillStyle = isSelected ? '#ffffff' : '#0071e3';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const minL = (d.minPrice / 100000).toFixed(0);
+        const maxL = (d.maxPrice / 100000).toFixed(0);
+        const label = minL === maxL ? `Rs. ${minL}L` : `${minL}-${maxL}L`;
+        ctx.fillText(label, x, y);
+      });
+    }
+  }, [filteredProperties, filteredDemands, selectedProp, selectedDemand, showSeller, showBuyer, heatmapMode, rawPoints, isDrawingActive, error, fallbackCenter, userLocationFallback, searchedLocationFallback, fallbackZoom, redrawTrigger]);
 
   // Fallback Canvas interactions
   const handleFallbackCanvasClick = (e) => {
@@ -758,25 +931,51 @@ export default function MapExplorer({ properties, onSelectProperty }) {
     const height = canvas.height;
 
     let clickedProp = null;
-    filteredProperties.forEach(prop => {
-      if (!prop.location?.lat || !prop.location?.lng) return;
-      const { x, y } = getCanvasCoords(prop.location.lat, prop.location.lng, width, height);
-      
-      const pillWidth = 72;
-      const pillHeight = 24;
-      if (
-        clickX >= x - pillWidth / 2 &&
-        clickX <= x + pillWidth / 2 &&
-        clickY >= y - pillHeight / 2 &&
-        clickY <= y + pillHeight / 2
-      ) {
-        clickedProp = prop;
-      }
-    });
+    let clickedDemand = null;
+
+    if (showSeller) {
+      filteredProperties.forEach(prop => {
+        if (!prop.location?.lat || !prop.location?.lng) return;
+        const { x, y } = getCanvasCoords(prop.location.lat, prop.location.lng, width, height);
+        
+        const pillWidth = 72;
+        const pillHeight = 24;
+        if (
+          clickX >= x - pillWidth / 2 &&
+          clickX <= x + pillWidth / 2 &&
+          clickY >= y - pillHeight / 2 &&
+          clickY <= y + pillHeight / 2
+        ) {
+          clickedProp = prop;
+        }
+      });
+    }
+
+    if (showBuyer && !clickedProp) {
+      filteredDemands.forEach(d => {
+        if (!d.lat || !d.lng) return;
+        const { x, y } = getCanvasCoords(d.lat, d.lng, width, height);
+        
+        const pillWidth = 72;
+        const pillHeight = 24;
+        if (
+          clickX >= x - pillWidth / 2 &&
+          clickX <= x + pillWidth / 2 &&
+          clickY >= y - pillHeight / 2 &&
+          clickY <= y + pillHeight / 2
+        ) {
+          clickedDemand = d;
+        }
+      });
+    }
 
     if (clickedProp) {
       setSelectedProp(clickedProp);
+      setSelectedDemand(null);
       onSelectProperty(clickedProp);
+    } else if (clickedDemand) {
+      setSelectedDemand(clickedDemand);
+      setSelectedProp(null);
     }
   };
 
@@ -1032,6 +1231,7 @@ export default function MapExplorer({ properties, onSelectProperty }) {
       drawingPolygonRef.current = null;
     }
     setFilteredProperties(properties);
+    setFilteredDemands(demands);
     setHasDrawnFilter(false);
     setIsDrawing(false);
     setRawPoints([]);
@@ -1146,6 +1346,38 @@ export default function MapExplorer({ properties, onSelectProperty }) {
     loadMaps();
   };
 
+  const sidebarItems = [];
+  if (showSeller) {
+    filteredProperties.forEach(p => {
+      sidebarItems.push({
+        id: `prop-${p.id}`,
+        type: 'seller',
+        title: p.title,
+        priceLabel: `Rs. ${(p.price / 100000).toFixed(0)}L`,
+        subLabel: p.type.toUpperCase(),
+        locationLabel: p.location?.address || p.location?.city || '',
+        image: p.image,
+        rawItem: p
+      });
+    });
+  }
+  if (showBuyer) {
+    filteredDemands.forEach(d => {
+      const minL = (d.minPrice / 100000).toFixed(0);
+      const maxL = (d.maxPrice / 100000).toFixed(0);
+      sidebarItems.push({
+        id: `demand-${d.id}`,
+        type: 'buyer',
+        title: `Demand: ${d.buyerName}`,
+        priceLabel: minL === maxL ? `Rs. ${minL}L` : `Rs. ${minL}-${maxL}L`,
+        subLabel: d.propertyType.toUpperCase(),
+        locationLabel: d.location,
+        image: null,
+        rawItem: d
+      });
+    });
+  }
+
   return (
     <div className="w-full max-w-[1200px] mx-auto bg-white border border-border-subtle rounded-card p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-left">
       {/* Header and Action toolbar */}
@@ -1156,14 +1388,51 @@ export default function MapExplorer({ properties, onSelectProperty }) {
             <span>Geospatial Map Explorer</span>
           </h2>
           <p className="text-on-surface-variant text-[14px] mt-1">
-            Toggle luxury rent/valuation heatmaps and draw custom boundaries to filter properties.
+            Toggle layers (Sellers / Buyers), heatmaps, and draw boundaries to filter items.
           </p>
         </div>
 
-        <div className="flex gap-2.5 animate-fade-in">
+        <div className="flex flex-wrap items-center gap-3 animate-fade-in">
+          {/* Dual Layer Tabs Selector */}
+          <div className="flex bg-surface-offwhite p-1 rounded-full border border-border-subtle items-center gap-1 select-none">
+            <button
+              onClick={() => {
+                setShowSeller(!showSeller);
+                if (showSeller && !showBuyer) {
+                  setShowBuyer(true);
+                }
+              }}
+              className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                showSeller 
+                  ? 'bg-[#e91e8f] text-white shadow-sm font-bold' 
+                  : 'text-on-surface-variant hover:bg-border-subtle/50'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${showSeller ? 'bg-white' : 'bg-[#e91e8f]'}`} />
+              <span>Seller Listings</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowBuyer(!showBuyer);
+                if (showBuyer && !showSeller) {
+                  setShowSeller(true);
+                }
+              }}
+              className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                showBuyer 
+                  ? 'bg-[#0071e3] text-white shadow-sm font-bold' 
+                  : 'text-on-surface-variant hover:bg-border-subtle/50'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${showBuyer ? 'bg-white' : 'bg-[#0071e3]'}`} />
+              <span>Buyer Demands</span>
+            </button>
+          </div>
+
           <button 
             onClick={() => setHeatmapMode(!heatmapMode)}
-            className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all cursor-pointer ${heatmapMode ? 'bg-accent-blue text-white shadow-sm' : 'bg-surface-offwhite hover:bg-border-subtle text-primary'}`}
+            disabled={!showSeller}
+            className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${heatmapMode && showSeller ? 'bg-accent-blue text-white shadow-sm' : 'bg-surface-offwhite hover:bg-border-subtle text-primary'}`}
           >
             {heatmapMode ? 'Disable Heatmap' : 'Heatmap View'}
           </button>
@@ -1190,12 +1459,12 @@ export default function MapExplorer({ properties, onSelectProperty }) {
         {/* Left filtered listings sidebar */}
         <div className="flex flex-col gap-3 h-[240px] md:h-auto overflow-y-auto pr-2 border-b md:border-b-0 md:border-r border-border-subtle pb-4 md:pb-0 md:pr-4">
           <div className="text-[12px] font-bold text-on-surface-variant uppercase tracking-wider pb-2 border-b border-border-subtle mb-1">
-            {filteredProperties.length} PROPERTIES IN REGION
+            {sidebarItems.length} {sidebarItems.length === 1 ? 'ITEM' : 'ITEMS'} IN REGION
           </div>
 
-          {filteredProperties.length === 0 ? (
+          {sidebarItems.length === 0 ? (
             <div className="py-12 px-4 text-center border border-dashed border-border-subtle rounded-lg">
-              <p className="text-on-surface-variant text-[13px] font-semibold">No properties in this boundary.</p>
+              <p className="text-on-surface-variant text-[13px] font-semibold">No listings or demands in this boundary.</p>
               <button 
                 onClick={clearDrawBoundary}
                 className="mt-2 text-[12px] text-accent-blue font-bold hover:underline cursor-pointer"
@@ -1204,30 +1473,69 @@ export default function MapExplorer({ properties, onSelectProperty }) {
               </button>
             </div>
           ) : (
-            filteredProperties.map((prop) => (
-              <div 
-                key={prop.id}
-                onClick={() => {
-                  setSelectedProp(prop);
-                  onSelectProperty(prop);
-                }}
-                className={`flex gap-3 p-3 rounded-lg border transition-all cursor-pointer ${selectedProp?.id === prop.id ? 'bg-accent-blue/5 border-accent-blue' : 'bg-white border-border-subtle hover:border-border-strong'}`}
-              >
-                <img 
-                  src={prop.image} 
-                  alt={prop.title} 
-                  className="w-16 h-12 rounded-[6px] object-cover flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0 text-left">
-                  <h4 className="text-[14px] font-bold text-primary truncate">
-                    {prop.title}
-                  </h4>
-                  <div className="text-[12px] text-on-surface-variant mt-1 font-medium">
-                    Rs. {(prop.price / 100000).toFixed(0)}L | {prop.type}
+            sidebarItems.map((item) => {
+              const isSelected = item.type === 'seller' 
+                ? (selectedProp && selectedProp.id === item.rawItem.id)
+                : (selectedDemand && selectedDemand.id === item.rawItem.id);
+              
+              const activeBgClass = item.type === 'seller'
+                ? 'bg-pink-500/5 border-[#e91e8f]'
+                : 'bg-blue-500/5 border-[#0071e3]';
+              
+              const borderClass = isSelected ? activeBgClass : 'bg-white border-border-subtle hover:border-border-strong';
+              
+              return (
+                <div 
+                  key={item.id}
+                  onClick={() => {
+                    if (item.type === 'seller') {
+                      setSelectedProp(item.rawItem);
+                      setSelectedDemand(null);
+                      onSelectProperty(item.rawItem);
+                    } else {
+                      setSelectedDemand(item.rawItem);
+                      setSelectedProp(null);
+                    }
+                  }}
+                  className={`flex gap-3 p-3 rounded-lg border transition-all cursor-pointer ${borderClass}`}
+                >
+                  {item.type === 'seller' ? (
+                    <img 
+                      src={item.image} 
+                      alt={item.title} 
+                      className="w-16 h-12 rounded-[6px] object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-16 h-12 rounded-[6px] bg-blue-50 flex items-center justify-center flex-shrink-0 border border-blue-100 text-blue-500">
+                      <User size={20} />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <h4 className="text-[13px] font-bold text-primary truncate flex-1">
+                        {item.title}
+                      </h4>
+                      {showSeller && showBuyer && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 select-none ${
+                          item.type === 'seller' ? 'bg-pink-50 text-[#e91e8f]' : 'bg-blue-50 text-[#0071e3]'
+                        }`}>
+                          {item.type.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="text-[11px] text-on-surface-variant mt-0.5 font-semibold">
+                      {item.priceLabel} | {item.subLabel}
+                    </div>
+                    <div className="text-[10px] text-on-surface-variant/70 mt-0.5 truncate font-medium flex items-center gap-0.5">
+                      <MapPin size={10} className="inline text-on-surface-variant/50" />
+                      <span>{item.locationLabel}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -1366,17 +1674,22 @@ export default function MapExplorer({ properties, onSelectProperty }) {
           )}
           
           {/* Custom Map Legend overlay */}
-          <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur border border-border-subtle p-3 rounded-lg text-[12px] font-semibold text-on-surface-variant shadow-sm z-10 text-left">
-            <div className="flex flex-col gap-2">
+          <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur border border-border-subtle p-3.5 rounded-xl text-[11px] font-semibold text-on-surface-variant shadow-md z-10 text-left select-none pointer-events-none flex flex-col gap-2">
+            <div className="text-[9px] text-on-surface-variant/60 font-bold uppercase tracking-wider">Map Legend</div>
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#86868b] inline-block"></span>
-                <span>Active Listings</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#e91e8f] inline-block"></span>
+                <span>Active Listings (Seller)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-accent-blue inline-block"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#0071e3] inline-block"></span>
+                <span>Buyer Demands (Buyer)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full border border-border-strong bg-white inline-block"></span>
                 <span>Selected Pin</span>
               </div>
-              {heatmapMode && (
+              {heatmapMode && showSeller && (
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-accent-blue to-[#004b96] inline-block"></span>
                   <span>Rent Density Heatmap</span>

@@ -1,6 +1,36 @@
-
 import { supabase } from './supabaseClient';
-import { mockProperties, mockAgents } from '../data/mockProperties';
+import { mockProperties, mockAgents, mockDemands } from '../data/mockProperties';
+
+// Secure pseudo-random number generator utilizing Web Crypto API
+function generateSecureRandomInt(min, max) {
+  const range = max - min + 1;
+  const array = new Uint32Array(1);
+  if (typeof window !== 'undefined' && window.crypto) {
+    window.crypto.getRandomValues(array);
+  } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(array);
+  } else {
+    return Math.floor(Math.random() * range) + min;
+  }
+  return (array[0] % range) + min;
+}
+
+function generateSecureRandomString(length = 9) {
+  const array = new Uint8Array(length);
+  if (typeof window !== 'undefined' && window.crypto) {
+    window.crypto.getRandomValues(array);
+  } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(array);
+  } else {
+    return Math.floor(Math.random() * 1000000000).toString(36);
+  }
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(array[i] % chars.length);
+  }
+  return result;
+}
 
 // ============================================================
 // PROPERTIES
@@ -46,7 +76,7 @@ export async function createProperty(propertyData) {
       before_image: propertyData.beforeImage || '',
       after_image: propertyData.afterImage || '',
       tagline: propertyData.tagline || '',
-      ai_score: Math.floor(Math.random() * 10) + 85,
+      ai_score: generateSecureRandomInt(85, 94),
       ai_price_prediction: {
         sixMonth: Math.round(propertyData.price * 1.02),
         oneYear: Math.round(propertyData.price * 1.06),
@@ -220,7 +250,7 @@ export async function approveSubmission(submission, reviewerId) {
       amenities: submission.amenities || [],
       image: submission.image || '',
       tagline: submission.description || '',
-      ai_score: Math.floor(Math.random() * 10) + 85,
+      ai_score: generateSecureRandomInt(85, 94),
       ai_price_prediction: {
         sixMonth: Math.round(submission.price * 1.02),
         oneYear: Math.round(submission.price * 1.06),
@@ -274,7 +304,7 @@ export async function rejectSubmission(submissionId, reviewerId, notes = '') {
  */
 export async function uploadImage(file) {
   const fileExt = file.name.split('.').pop();
-  const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+  const fileName = `${Date.now()}-${generateSecureRandomString(9)}.${fileExt}`;
   const filePath = `uploads/${fileName}`;
 
   const { error } = await supabase.storage
@@ -341,3 +371,121 @@ function transformInquiry(row) {
     date: new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
   };
 }
+
+// ============================================================
+// DEMANDS
+// ============================================================
+
+/**
+ * Fetch demands.
+ * Public users get only approved. Authenticated users (agents) get all.
+ */
+export async function fetchDemands(isAuthenticated = false) {
+  const { data, error } = await supabase
+    .from('demands')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('Supabase fetch demands failed, using mock data:', error.message);
+    return isAuthenticated 
+      ? mockDemands 
+      : mockDemands.filter(d => d.reviewStatus === 'approved');
+  }
+
+  // Transform and filter
+  const transformed = data.map(transformDemand);
+  return isAuthenticated 
+    ? transformed 
+    : transformed.filter(d => d.reviewStatus === 'approved');
+}
+
+/**
+ * Create a new demand (public submission).
+ */
+export async function createDemand(demandData) {
+  const { data, error } = await supabase
+    .from('demands')
+    .insert({
+      buyer_name: demandData.buyerName,
+      buyer_email: demandData.buyerEmail,
+      buyer_phone: demandData.buyerPhone,
+      property_type: demandData.propertyType,
+      location: demandData.location,
+      lat: demandData.lat,
+      lng: demandData.lng,
+      min_price: demandData.minPrice,
+      max_price: demandData.maxPrice,
+      details: demandData.details || {},
+      description: demandData.description || '',
+      review_status: 'pending'
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return transformDemand(data);
+}
+
+/**
+ * Approve a demand (requires auth).
+ */
+export async function approveDemand(id, reviewerId) {
+  const { data, error } = await supabase
+    .from('demands')
+    .update({
+      review_status: 'approved',
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return transformDemand(data);
+}
+
+/**
+ * Reject a demand (requires auth).
+ */
+export async function rejectDemand(id, reviewerId, notes = '') {
+  const { data, error } = await supabase
+    .from('demands')
+    .update({
+      review_status: 'rejected',
+      reviewer_notes: notes,
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return transformDemand(data);
+}
+
+/** Transform Supabase snake_case demand row to camelCase for frontend. */
+function transformDemand(row) {
+  return {
+    id: row.id,
+    buyerName: row.buyer_name,
+    buyerEmail: row.buyer_email,
+    buyerPhone: row.buyer_phone,
+    propertyType: row.property_type,
+    location: row.location,
+    lat: row.lat,
+    lng: row.lng,
+    minPrice: row.min_price,
+    maxPrice: row.max_price,
+    details: row.details || {},
+    description: row.description || '',
+    reviewStatus: row.review_status,
+    reviewerNotes: row.reviewer_notes || '',
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    createdAt: row.created_at
+  };
+}
+

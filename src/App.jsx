@@ -11,7 +11,9 @@ import InquiryModal from './components/InquiryModal';
 import Calculator from './components/Calculator';
 import UnitConverter from './components/UnitConverter';
 import CompareDrawer from './components/CompareDrawer';
-import { fetchProperties } from './lib/propertyService';
+import DemandSection from './components/DemandSection';
+import DemandModal from './components/DemandModal';
+import { fetchProperties, fetchDemands } from './lib/propertyService';
 import { mockProperties, mockAgents } from './data/mockProperties';
 import { Phone, Mail, MapPin, ArrowRightLeft, Calculator as CalcIcon } from 'lucide-react';
 
@@ -30,15 +32,10 @@ function AppContent() {
   // Tools sub-tab state
   const [activeToolTab, setActiveToolTab] = useState('emi');
 
-  // Saved properties state
-  const [savedPropertyIds, setSavedPropertyIds] = useState(() => {
-    try {
-      const parsed = JSON.parse(localStorage.getItem('saved_properties') || '[]');
-      return Array.isArray(parsed) ? parsed.filter(id => typeof id === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
+  // Demands state
+  const [demands, setDemands] = useState([]);
+  const [isDemandModalOpen, setIsDemandModalOpen] = useState(false);
+
   const [compareList, setCompareList] = useState([]);
   const [filterPurpose, setFilterPurpose] = useState('all');
   const [filterType, setFilterType] = useState('all');
@@ -48,13 +45,7 @@ function AppContent() {
     setIsInquiryOpen(true);
   };
 
-  const handleFavoriteToggle = (id) => {
-    setSavedPropertyIds((prev) => {
-      const updated = prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id];
-      localStorage.setItem('saved_properties', JSON.stringify(updated));
-      return updated;
-    });
-  };
+
 
   const handleCompareToggle = (property) => {
     const exists = compareList.find(p => p.id === property.id);
@@ -77,10 +68,11 @@ function AppContent() {
     setCompareList([]);
   };
 
-  // Fetch properties from Supabase on mount
+  // Fetch properties and demands on mount or auth change
   useEffect(() => {
     loadProperties();
-  }, []);
+    loadDemands();
+  }, [isAuthenticated]);
 
   const loadProperties = async () => {
     try {
@@ -95,6 +87,15 @@ function AppContent() {
       setProperties(mockProperties);
       setSelectedProperty(mockProperties[0]);
       setDataLoaded(true);
+    }
+  };
+
+  const loadDemands = async () => {
+    try {
+      const data = await fetchDemands(isAuthenticated);
+      setDemands(data);
+    } catch (err) {
+      console.warn('Failed to load demands:', err);
     }
   };
 
@@ -177,7 +178,6 @@ function AppContent() {
         setCurrentTab={handleTabChange} 
         isAdmin={isAdmin} 
         setIsAdmin={setIsAdmin} 
-        savedCount={savedPropertyIds.length}
       />
 
       {/* Main Container Section */}
@@ -189,6 +189,8 @@ function AppContent() {
             setProperties={setProperties} 
             agents={mockAgents}
             onPropertiesChange={handlePropertiesChange}
+            demands={demands}
+            onDemandsChange={loadDemands}
           />
         ) : (
           /* Customer Portal View */
@@ -288,8 +290,6 @@ function AppContent() {
                               setViewMode('detail');
                             }}
                             onInquireClick={handleInquireClick}
-                            isFavorited={savedPropertyIds.includes(prop.id)}
-                            onFavoriteClick={handleFavoriteToggle}
                             isComparing={!!compareList.find(p => p.id === prop.id)}
                             onCompareToggle={handleCompareToggle}
                           />
@@ -325,8 +325,6 @@ function AppContent() {
                               setViewMode('detail');
                             }}
                             onInquireClick={handleInquireClick}
-                            isFavorited={savedPropertyIds.includes(prop.id)}
-                            onFavoriteClick={handleFavoriteToggle}
                             isComparing={!!compareList.find(p => p.id === prop.id)}
                             onCompareToggle={handleCompareToggle}
                           />
@@ -334,6 +332,12 @@ function AppContent() {
                       </div>
                     ) : null}
                   </section>
+
+                  {/* Demand Feed Section */}
+                  <DemandSection 
+                    demands={demands} 
+                    onPostDemandClick={() => setIsDemandModalOpen(true)} 
+                  />
                 </>
               )
             )}
@@ -342,6 +346,7 @@ function AppContent() {
               <section className="pt-8">
                 <MapExplorer 
                   properties={properties} 
+                  demands={demands.filter(d => d.reviewStatus === 'approved')}
                   onSelectProperty={(prop) => {
                     setSelectedProperty(prop);
                   }} 
@@ -388,43 +393,7 @@ function AppContent() {
               </section>
             )}
 
-            {currentTab === 'saved' && (
-              <section className="max-w-[1200px] mx-auto px-gutter py-12 text-left animate-[fadeInUp_0.4s_var(--apple-ease)]">
-                <div className="mb-8">
-                  <h2 className="text-[24px] font-bold text-primary">Saved Properties</h2>
-                  <p className="text-on-surface-variant text-[14px] mt-1 font-medium">
-                    Your bookmarked properties list.
-                  </p>
-                </div>
-                {properties.filter(p => savedPropertyIds.includes(p.id)).length === 0 ? (
-                  <div className="py-20 px-5 bg-white border border-dashed border-border-strong rounded-card text-center">
-                    <h3 className="text-primary text-[18px] font-bold mb-2">No saved properties</h3>
-                    <p className="text-on-surface-variant text-[14px]">Click the heart icon on listings to bookmark properties.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {properties
-                      .filter(p => savedPropertyIds.includes(p.id))
-                      .map((prop) => (
-                        <ListingCard 
-                          key={prop.id} 
-                          property={prop} 
-                          onPropertyClick={(p) => {
-                            setSelectedProperty(p);
-                            setViewMode('detail');
-                            setCurrentTab('home'); // Go to home to display detail
-                          }}
-                          onInquireClick={handleInquireClick}
-                          isFavorited={true}
-                          onFavoriteClick={handleFavoriteToggle}
-                          isComparing={!!compareList.find(p => p.id === prop.id)}
-                          onCompareToggle={handleCompareToggle}
-                        />
-                      ))}
-                  </div>
-                )}
-              </section>
-            )}
+
           </>
         )}
       </main>
@@ -450,6 +419,13 @@ function AppContent() {
           onInquireClick={handleInquireClick}
         />
       )}
+
+      {/* Demand Submission Modal */}
+      <DemandModal 
+        isOpen={isDemandModalOpen} 
+        onClose={() => setIsDemandModalOpen(false)} 
+        onSubmitSuccess={loadDemands}
+      />
 
       {/* Footer */}
       <footer className="w-full py-12 bg-surface-offwhite border-t border-border-subtle">
@@ -497,7 +473,6 @@ function AppContent() {
               <ul className="space-y-2 text-[14px] text-on-surface-variant font-medium">
                 <li><a onClick={() => { setCurrentTab('tools'); setActiveToolTab('emi'); }} className="hover:underline cursor-pointer">EMI Calculator</a></li>
                 <li><a onClick={() => { setCurrentTab('tools'); setActiveToolTab('converter'); }} className="hover:underline cursor-pointer">Unit Converter</a></li>
-                <li><a onClick={() => setCurrentTab('saved')} className="hover:underline cursor-pointer">Saved Properties</a></li>
               </ul>
             </div>
           </div>

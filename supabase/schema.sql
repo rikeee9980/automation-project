@@ -194,3 +194,53 @@ GRANT USAGE ON SCHEMA storage TO postgres, anon, authenticated, service_role;
 GRANT ALL ON TABLE storage.objects TO postgres, anon, authenticated, service_role;
 GRANT ALL ON TABLE storage.buckets TO postgres, anon, authenticated, service_role;
 
+-- ============================================================
+-- DEMANDS TABLE
+-- ============================================================
+
+-- Demands Table (public submit, admin/broker reviews and publishes)
+CREATE TABLE IF NOT EXISTS demands (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  buyer_name TEXT NOT NULL,
+  buyer_email TEXT NOT NULL,
+  buyer_phone TEXT NOT NULL,
+  property_type TEXT NOT NULL CHECK (property_type IN ('house', 'flat', 'land', 'commercial')),
+  location TEXT NOT NULL,
+  min_price BIGINT NOT NULL,
+  max_price BIGINT NOT NULL,
+  details JSONB NOT NULL DEFAULT '{}',
+  description TEXT,
+  review_status TEXT DEFAULT 'pending' CHECK (review_status IN ('pending', 'approved', 'rejected')),
+  reviewer_notes TEXT,
+  reviewed_by UUID REFERENCES auth.users(id),
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE demands ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can insert demands (public)
+CREATE POLICY "Public can insert demands"
+  ON demands FOR INSERT
+  WITH CHECK (true);
+
+-- Anyone can read approved demands
+CREATE POLICY "Public can read approved demands"
+  ON demands FOR SELECT
+  USING (review_status = 'approved');
+
+-- Authenticated users (brokers) can read all demands (including pending/rejected)
+CREATE POLICY "Authenticated users can read all demands"
+  ON demands FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- Authenticated users (brokers) can update demands (for moderation status changes)
+CREATE POLICY "Authenticated users can update demands"
+  ON demands FOR UPDATE
+  USING (auth.role() = 'authenticated');
+
+-- Grant permissions to standard client roles
+GRANT ALL ON TABLE demands TO postgres, anon, authenticated, service_role;
+
+

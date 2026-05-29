@@ -391,3 +391,78 @@ export const mockAgents = [
     bio: "Expert in commercial and rental properties across the Kathmandu Valley and Pokhara."
   }
 ];
+
+export const mockDemands = [
+  {
+    id: "demand-1",
+    buyerName: "Anil Gurung",
+    buyerEmail: "anil.gurung@example.com",
+    buyerPhone: "+977 9851012345",
+    propertyType: "flat",
+    location: "Jhamsikhel, Lalitpur",
+    lat: 27.6780,
+    lng: 85.3122,
+    minPrice: 15000000,
+    maxPrice: 20000000,
+    details: { bedrooms: 3, bathrooms: 2 },
+    description: "Looking for a spacious 3 BHK apartment in Jhamsikhel/Sanepa area. Preferred with power backup and dedicated parking.",
+    reviewStatus: "approved",
+    reviewedBy: "agent-1",
+    reviewedAt: "2026-05-26",
+    createdAt: "2026-05-25"
+  },
+  {
+    id: "demand-2",
+    buyerName: "Priyanka Shrestha",
+    buyerEmail: "priyanka.s@example.com",
+    buyerPhone: "+977 9801122334",
+    propertyType: "land",
+    location: "Baluwatar, Kathmandu",
+    lat: 27.7172,
+    lng: 85.3240,
+    minPrice: 30000000,
+    maxPrice: 40000000,
+    details: { areaSqft: 2500 },
+    description: "Urgent need for residential land plot of around 8 to 10 aana in a quiet residential street of Baluwatar.",
+    reviewStatus: "approved",
+    reviewedBy: "agent-1",
+    reviewedAt: "2026-05-27",
+    createdAt: "2026-05-26"
+  },
+  {
+    id: "demand-3",
+    buyerName: "Dinesh Thapa",
+    buyerEmail: "dinesh.thapa@example.com",
+    buyerPhone: "+977 9841334455",
+    propertyType: "commercial",
+    location: "New Road, Kathmandu",
+    lat: 27.7061,
+    lng: 85.3128,
+    minPrice: 400000,
+    maxPrice: 600000,
+    details: { floors: 1, areaSqft: 1800 },
+    description: "Looking for ground floor commercial/showroom space on the main street of New Road for a premium retail outlet.",
+    reviewStatus: "pending",
+    createdAt: "2026-05-28"
+  },
+  {
+    id: "demand-4",
+    buyerName: "Karan Kaji",
+    buyerEmail: "karan.kaji@example.com",
+    buyerPhone: "+977 9812998877",
+    propertyType: "house",
+    location: "Kathmandu Center",
+    lat: 27.7172,
+    lng: 85.3240,
+    minPrice: 5000000,
+    maxPrice: 8000000,
+    details: { bedrooms: 4 },
+    description: "Need a standalone house in central Kathmandu with 4+ bedrooms. My max budget is Rs. 80 Lakhs (8000000).",
+    reviewStatus: "rejected",
+    reviewerNotes: "Unrealistic budget for standalone house in central Kathmandu. Advised client to consider apartment or outer regions.",
+    reviewedBy: "agent-2",
+    reviewedAt: "2026-05-28",
+    createdAt: "2026-05-28"
+  }
+];
+

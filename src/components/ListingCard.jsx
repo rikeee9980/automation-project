@@ -6,8 +6,6 @@ export default function ListingCard({
   property, 
   onPropertyClick, 
   onInquireClick,
-  isFavorited = false,
-  onFavoriteClick,
   isComparing = false,
   onCompareToggle
 }) {
@@ -28,20 +26,7 @@ export default function ListingCard({
           loading="lazy"
         />
         
-        {/* Heart Icon Overlay */}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onFavoriteClick && onFavoriteClick(property.id);
-          }}
-          className="absolute top-4 left-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center border border-border-subtle cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm text-primary z-10"
-          title={isFavorited ? "Remove from Saved" : "Save Property"}
-        >
-          <Heart 
-            size={16} 
-            className={isFavorited ? 'fill-error text-error' : 'text-primary'} 
-          />
-        </button>
+
 
         {/* Purpose badge */}
         <div className="absolute top-4 right-4 z-10">

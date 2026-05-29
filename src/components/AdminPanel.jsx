@@ -10,7 +10,8 @@ import {
 import {
   createProperty, updateProperty, deleteProperty,
   fetchInquiries, updateInquiryStatus,
-  fetchSubmissions, approveSubmission, rejectSubmission, uploadImage
+  fetchSubmissions, approveSubmission, rejectSubmission, uploadImage,
+  approveDemand, rejectDemand
 } from '../lib/propertyService';
 // Predefined cities mapping for local geocoding lookup inside AdminPanel
 const adminCitiesLookup = {
@@ -140,7 +141,14 @@ function loadGoogleMapsAPI(apiKey) {
   return googleMapsPromise;
 }
 
-export default function AdminPanel({ properties, setProperties, agents, onPropertiesChange }) {
+export default function AdminPanel({ 
+  properties, 
+  setProperties, 
+  agents, 
+  onPropertiesChange,
+  demands = [],
+  onDemandsChange
+}) {
   const { user } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState('overview');
 
@@ -316,6 +324,10 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
   const [submissions, setSubmissions] = useState([]);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [rejectNotes, setRejectNotes] = useState('');
+
+  // Demands State
+  const [selectedDemand, setSelectedDemand] = useState(null);
+  const [demandRejectNotes, setDemandRejectNotes] = useState('');
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -595,7 +607,37 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
     }
   };
 
+  const handleApproveDemand = async (demand) => {
+    setActionLoading(demand.id);
+    try {
+      await approveDemand(demand.id, user?.id);
+      if (onDemandsChange) onDemandsChange();
+      showToast(`Demand by "${demand.buyerName}" approved and published!`);
+      setSelectedDemand(null);
+    } catch (err) {
+      showToast('Approval failed: ' + err.message, 'error');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleRejectDemand = async (demandId) => {
+    setActionLoading(demandId);
+    try {
+      await rejectDemand(demandId, user?.id, demandRejectNotes);
+      if (onDemandsChange) onDemandsChange();
+      showToast('Demand rejected');
+      setSelectedDemand(null);
+      setDemandRejectNotes('');
+    } catch (err) {
+      showToast('Rejection failed: ' + err.message, 'error');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
   const pendingCount = submissions.filter(s => s.review_status === 'pending').length;
+  const pendingDemandsCount = demands.filter(d => d.reviewStatus === 'pending').length;
 
   return (
     <div className="flex min-h-screen bg-surface-offwhite w-full">
@@ -685,6 +727,19 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
             {pendingCount > 0 && (
               <span className="ml-auto bg-accent-blue text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
                 {pendingCount}
+              </span>
+            )}
+          </button>
+
+          <button 
+            onClick={() => setActiveSubTab('demands')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg w-full text-left transition-all ${activeSubTab === 'demands' ? 'sidebar-active text-accent-blue bg-surface-offwhite' : 'text-on-surface-variant hover:bg-surface-offwhite hover:text-primary font-medium'}`}
+          >
+            <Inbox size={18} />
+            <span className="text-[14px] font-semibold">Review Demands</span>
+            {pendingDemandsCount > 0 && (
+              <span className="ml-auto bg-accent-blue text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {pendingDemandsCount}
               </span>
             )}
           </button>
@@ -1323,6 +1378,171 @@ export default function AdminPanel({ properties, setProperties, agents, onProper
                       <div className="h-full min-h-[300px] flex flex-col justify-center items-center border border-dashed border-border-strong rounded-xl p-10 text-on-surface-variant text-center bg-white">
                         <Eye size={32} className="mb-3 text-accent-blue" />
                         <p className="text-[14px] font-medium">Select a submission to review details</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeSubTab === 'demands' && (
+            <div>
+              <div className="flex justify-between items-end mb-8">
+                <div>
+                  <h1 className="text-[28px] font-bold text-primary tracking-tight">Review Demands</h1>
+                  <p className="text-on-surface-variant text-[15px] mt-1">Buyer property requirements awaiting review.</p>
+                </div>
+              </div>
+
+              {demands.length === 0 ? (
+                <div className="py-16 text-center bg-white rounded-2xl border border-dashed border-border-strong">
+                  <Inbox size={40} className="mx-auto mb-4 text-on-surface-variant opacity-30" />
+                  <h3 className="text-[18px] font-bold text-primary mb-2">No demands posted</h3>
+                  <p className="text-[14px] text-on-surface-variant">When buyers post property demands, they'll appear here for review.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Demands List */}
+                  <div className="flex flex-col gap-4 text-left">
+                    {demands.map(demand => (
+                      <div
+                        key={demand.id}
+                        onClick={() => { setSelectedDemand(demand); setDemandRejectNotes(''); }}
+                        className={`bg-white border rounded-xl p-5 cursor-pointer transition-all ${
+                          selectedDemand?.id === demand.id ? 'border-accent-blue shadow-md' : 'border-border-subtle hover:border-border-strong'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="text-[16px] font-bold text-primary">{demand.location}</h3>
+                            <p className="text-[13px] text-on-surface-variant mt-0.5">
+                              by {demand.buyerName}
+                            </p>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                            demand.reviewStatus === 'pending' ? 'bg-orange-100 text-orange-700' :
+                            demand.reviewStatus === 'approved' ? 'bg-green-50 text-green-600' :
+                            'bg-red-50 text-red-600'
+                          }`}>
+                            {demand.reviewStatus}
+                          </span>
+                        </div>
+                        <div className="flex gap-4 text-[13px] text-on-surface-variant">
+                          <span className="font-semibold text-accent-blue">Rs. {(demand.minPrice/100000).toFixed(0)}L - {(demand.maxPrice/100000).toFixed(0)}L</span>
+                          <span className="capitalize">{demand.propertyType}</span>
+                          <span>{demand.createdAt ? new Date(demand.createdAt).toLocaleDateString() : 'Recent'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Demand Detail Panel */}
+                  <div>
+                    {selectedDemand ? (
+                      <div className="bg-white border border-border-subtle rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] sticky top-[80px] text-left">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface-offwhite border border-border-subtle capitalize`}>
+                            {selectedDemand.propertyType}
+                          </span>
+                          <span className="text-[12px] text-on-surface-variant font-medium">
+                            Posted: {selectedDemand.createdAt ? new Date(selectedDemand.createdAt).toLocaleDateString() : 'Recent'}
+                          </span>
+                        </div>
+
+                        <h3 className="text-[20px] font-bold text-primary mb-1">Looking in {selectedDemand.location}</h3>
+                        <p className="text-[14px] text-on-surface-variant mb-6">
+                          Submitted by <strong>{selectedDemand.buyerName}</strong>
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-3 mb-5">
+                          <div className="bg-surface-offwhite p-3 rounded-lg">
+                            <p className="text-[11px] text-on-surface-variant font-bold uppercase">Budget Range</p>
+                            <p className="text-[15px] font-bold text-primary">Rs. {(selectedDemand.minPrice / 100000).toFixed(0)}L - {(selectedDemand.maxPrice / 100000).toFixed(0)}L</p>
+                          </div>
+                          <div className="bg-surface-offwhite p-3 rounded-lg">
+                            <p className="text-[11px] text-on-surface-variant font-bold uppercase">Specification</p>
+                            <p className="text-[15px] font-bold text-primary">
+                              {selectedDemand.details?.bedrooms ? `${selectedDemand.details.bedrooms} BHK` : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {selectedDemand.description && (
+                          <div className="bg-surface-offwhite p-3 rounded-lg mb-5">
+                            <p className="text-[11px] text-on-surface-variant font-bold uppercase mb-1">Requirements Message</p>
+                            <p className="text-[14px] text-primary italic">"{selectedDemand.description}"</p>
+                          </div>
+                        )}
+
+                        <div className="bg-surface-offwhite p-3 rounded-lg mb-6 border border-border-subtle/50">
+                          <p className="text-[11px] text-on-surface-variant font-bold uppercase mb-2">Buyer Verification Info</p>
+                          <div className="flex flex-col gap-1.5 text-[13px] text-primary">
+                            <div className="flex items-center gap-2">
+                              <Mail size={13} className="text-on-surface-variant/70" />
+                              <span>{selectedDemand.buyerEmail}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone size={13} className="text-on-surface-variant/70" />
+                              <span>{selectedDemand.buyerPhone}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {selectedDemand.reviewStatus === 'pending' && (
+                          <>
+                            <div className="flex flex-col gap-2 mb-4">
+                              <label className="text-[12px] font-semibold text-on-surface-variant">Reviewer Notes (optional)</label>
+                              <textarea
+                                value={demandRejectNotes}
+                                onChange={(e) => setDemandRejectNotes(e.target.value)}
+                                placeholder="Add notes for rejection reason..."
+                                rows={2}
+                                className="w-full p-3 bg-surface-offwhite border border-border-strong rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 resize-none"
+                              />
+                            </div>
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() => handleApproveDemand(selectedDemand)}
+                                disabled={actionLoading === selectedDemand.id}
+                                className="flex-1 h-10 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[13px] font-semibold transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                              >
+                                {actionLoading === selectedDemand.id ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <CheckCircle2 size={14} />
+                                )}
+                                Approve & Publish
+                              </button>
+                              <button
+                                onClick={() => handleRejectDemand(selectedDemand.id)}
+                                disabled={actionLoading === selectedDemand.id}
+                                className="flex-1 h-10 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[13px] font-semibold transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                              >
+                                <XCircle size={14} />
+                                Reject
+                              </button>
+                            </div>
+                          </>
+                        )}
+
+                        {selectedDemand.reviewStatus !== 'pending' && (
+                          <div className={`px-4 py-3 rounded-xl text-[13px] font-medium ${
+                            selectedDemand.reviewStatus === 'approved'
+                              ? 'bg-green-50 text-green-700'
+                              : 'bg-red-50 text-red-700'
+                          }`}>
+                            This demand has been <strong>{selectedDemand.reviewStatus}</strong>
+                            {selectedDemand.reviewerNotes && (
+                              <p className="mt-1 opacity-80">Notes: {selectedDemand.reviewerNotes}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-full min-h-[300px] flex flex-col justify-center items-center border border-dashed border-border-strong rounded-xl p-10 text-on-surface-variant text-center bg-white">
+                        <Eye size={32} className="mb-3 text-accent-blue" />
+                        <p className="text-[14px] font-medium">Select a demand to review details</p>
                       </div>
                     )}
                   </div>
