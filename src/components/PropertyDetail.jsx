@@ -6,6 +6,7 @@ import {
 import ImageGallery from './ImageGallery';
 import ShareButton from './ShareButton';
 import { formatAreaLocal } from '../lib/unitConvert';
+import TrustShield from './TrustShield';
 
 export default function PropertyDetail({ property, onBackClick, onInquireClick }) {
   if (!property) return null;
@@ -182,6 +183,9 @@ export default function PropertyDetail({ property, onBackClick, onInquireClick }
               ))}
             </div>
           </div>
+
+          {/* Trust Shield Verification & Q&A */}
+          <TrustShield property={property} />
         </section>
 
         {/* Right Column: Agent & Contact */}

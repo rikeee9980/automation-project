@@ -44,7 +44,14 @@ export const mockProperties = [
     status: "available",
     agentId: "agent-1",
     createdAt: "2026-05-01",
-    tagline: "Spacious 4BHK penthouse with panoramic city and mountain views in Baluwatar."
+    tagline: "Spacious 4BHK penthouse with panoramic city and mountain views in Baluwatar.",
+    verification: {
+      legalOwnership: true,
+      taxClearance: true,
+      accessRoad: true,
+      physicalCheck: true,
+      utilityChecks: true
+    }
   },
   {
     id: "prop-2",
@@ -91,7 +98,14 @@ export const mockProperties = [
     status: "available",
     agentId: "agent-1",
     createdAt: "2026-05-10",
-    tagline: "Beautiful 3BHK bungalow with garden and solar system in Jhamsikhel."
+    tagline: "Beautiful 3BHK bungalow with garden and solar system in Jhamsikhel.",
+    verification: {
+      legalOwnership: true,
+      taxClearance: true,
+      accessRoad: true,
+      physicalCheck: true,
+      utilityChecks: false
+    }
   },
   {
     id: "prop-3",
@@ -137,7 +151,14 @@ export const mockProperties = [
     status: "available",
     agentId: "agent-2",
     createdAt: "2026-05-15",
-    tagline: "Well-maintained duplex house with road access and parking in Dhumbarahi."
+    tagline: "Well-maintained duplex house with road access and parking in Dhumbarahi.",
+    verification: {
+      legalOwnership: true,
+      taxClearance: true,
+      accessRoad: false,
+      physicalCheck: false,
+      utilityChecks: false
+    }
   },
   {
     id: "prop-4",
@@ -182,7 +203,14 @@ export const mockProperties = [
     status: "available",
     agentId: "agent-1",
     createdAt: "2026-05-20",
-    tagline: "Prime residential plot in the heart of VIP neighborhood, Baluwatar."
+    tagline: "Prime residential plot in the heart of VIP neighborhood, Baluwatar.",
+    verification: {
+      legalOwnership: true,
+      taxClearance: true,
+      accessRoad: true,
+      physicalCheck: true,
+      utilityChecks: true
+    }
   },
   {
     id: "prop-5",
@@ -228,7 +256,14 @@ export const mockProperties = [
     status: "available",
     agentId: "agent-2",
     createdAt: "2026-05-22",
-    tagline: "Fully-furnished executive flat with panoramic mountain views in Sanepa."
+    tagline: "Fully-furnished executive flat with panoramic mountain views in Sanepa.",
+    verification: {
+      legalOwnership: true,
+      taxClearance: false,
+      accessRoad: true,
+      physicalCheck: true,
+      utilityChecks: true
+    }
   },
   {
     id: "prop-6",
@@ -274,7 +309,14 @@ export const mockProperties = [
     status: "available",
     agentId: "agent-1",
     createdAt: "2026-05-25",
-    tagline: "Stunning 4BHK villa with direct views of Phewa Lake and Annapurna Range."
+    tagline: "Stunning 4BHK villa with direct views of Phewa Lake and Annapurna Range.",
+    verification: {
+      legalOwnership: true,
+      taxClearance: true,
+      accessRoad: true,
+      physicalCheck: true,
+      utilityChecks: true
+    }
   },
   {
     id: "prop-7",
@@ -319,7 +361,14 @@ export const mockProperties = [
     status: "available",
     agentId: "agent-2",
     createdAt: "2026-05-18",
-    tagline: "Prime commercial building on 32ft road in Bharatpur's busiest commercial zone."
+    tagline: "Prime commercial building on 32ft road in Bharatpur's busiest commercial zone.",
+    verification: {
+      legalOwnership: false,
+      taxClearance: false,
+      accessRoad: false,
+      physicalCheck: false,
+      utilityChecks: false
+    }
   },
   {
     id: "prop-8",
@@ -365,7 +414,14 @@ export const mockProperties = [
     status: "available",
     agentId: "agent-2",
     createdAt: "2026-05-12",
-    tagline: "Charming 3-storey Newari-style house near UNESCO heritage Dattatreya Square."
+    tagline: "Charming 3-storey Newari-style house near UNESCO heritage Dattatreya Square.",
+    verification: {
+      legalOwnership: false,
+      taxClearance: true,
+      accessRoad: false,
+      physicalCheck: true,
+      utilityChecks: false
+    }
   }
 ];
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, PlusCircle, Layers, MessageSquare,
-  Trash2, ShieldCheck, Mail, Upload, Sparkles, Plus,
+  Trash2, ShieldCheck, Mail, Phone, Upload, Sparkles, Plus,
   TrendingUp, Calendar, Inbox, DollarSign, MoreHorizontal,
   Edit3, X, CheckCircle2, XCircle, Eye, ClipboardList,
   Loader2, AlertTriangle, MapPin, Search
@@ -11,7 +11,7 @@ import {
   createProperty, updateProperty, deleteProperty,
   fetchInquiries, updateInquiryStatus,
   fetchSubmissions, approveSubmission, rejectSubmission, uploadImage,
-  approveDemand, rejectDemand
+  approveDemand, rejectDemand, updateDemand, deleteDemand
 } from '../lib/propertyService';
 // Predefined cities mapping for local geocoding lookup inside AdminPanel
 const adminCitiesLookup = {
@@ -121,7 +121,7 @@ function loadGoogleMapsAPI(apiKey) {
   if (googleMapsPromise) return googleMapsPromise;
   googleMapsPromise = new Promise((resolve, reject) => {
     if (window.google && window.google.maps) {
-      resolve(window.google.maps);
+      resolve(window.google);
       return;
     }
     const script = document.createElement('script');
@@ -130,7 +130,7 @@ function loadGoogleMapsAPI(apiKey) {
     script.defer = true;
     script.onload = () => {
       if (window.google && window.google.maps) {
-        resolve(window.google.maps);
+        resolve(window.google);
       } else {
         reject(new Error('Google Maps API failed to load.'));
       }
@@ -172,6 +172,13 @@ export default function AdminPanel({
   const [roadAccess, setRoadAccess] = useState('');
   const [facing, setFacing] = useState('');
   const [builtYear, setBuiltYear] = useState('');
+
+  // Trust Shield Verification checklist states
+  const [verifyLegal, setVerifyLegal] = useState(false);
+  const [verifyTax, setVerifyTax] = useState(false);
+  const [verifyRoad, setVerifyRoad] = useState(false);
+  const [verifyPhysical, setVerifyPhysical] = useState(false);
+  const [verifyUtilities, setVerifyUtilities] = useState(false);
 
   // Mini-map picker states & refs
   const [mapError, setMapError] = useState(false);
@@ -328,6 +335,18 @@ export default function AdminPanel({
   // Demands State
   const [selectedDemand, setSelectedDemand] = useState(null);
   const [demandRejectNotes, setDemandRejectNotes] = useState('');
+  const [demandsFilter, setDemandsFilter] = useState('pending'); // 'pending' | 'approved' | 'rejected'
+
+  // Demands Edit States
+  const [isEditingDemand, setIsEditingDemand] = useState(false);
+  const [editDemandLocation, setEditDemandLocation] = useState('');
+  const [editDemandMinPrice, setEditDemandMinPrice] = useState('');
+  const [editDemandMaxPrice, setEditDemandMaxPrice] = useState('');
+  const [editDemandPropertyType, setEditDemandPropertyType] = useState('house');
+  const [editDemandDescription, setEditDemandDescription] = useState('');
+  const [editDemandBedrooms, setEditDemandBedrooms] = useState('');
+  const [editDemandStatus, setEditDemandStatus] = useState('pending');
+  const [editDemandNotes, setEditDemandNotes] = useState('');
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -419,6 +438,14 @@ export default function AdminPanel({
         zip: '44600'
       };
 
+      const verificationData = {
+        legalOwnership: verifyLegal,
+        taxClearance: verifyTax,
+        accessRoad: verifyRoad,
+        physicalCheck: verifyPhysical,
+        utilityChecks: verifyUtilities
+      };
+
       if (editingId) {
         // UPDATE existing property
         await updateProperty(editingId, {
@@ -438,6 +465,7 @@ export default function AdminPanel({
             floors: 1,
             parking: 2
           },
+          verification: verificationData,
         });
         showToast('Property updated successfully!');
       } else {
@@ -459,6 +487,7 @@ export default function AdminPanel({
             floors: 1,
             parking: 2
           },
+          verification: verificationData,
         });
         showToast('Listing created successfully!');
       }
@@ -496,6 +525,13 @@ export default function AdminPanel({
     setRoadAccess('');
     setFacing('');
     setBuiltYear('');
+
+    // Clear verification checklist states
+    setVerifyLegal(false);
+    setVerifyTax(false);
+    setVerifyRoad(false);
+    setVerifyPhysical(false);
+    setVerifyUtilities(false);
   };
 
   // Start editing a property
@@ -519,6 +555,14 @@ export default function AdminPanel({
     setRoadAccess(prop.roadAccess || '');
     setFacing(prop.facing || '');
     setBuiltYear(prop.builtYear ? String(prop.builtYear) : '');
+
+    // Load verification checklist states
+    const ver = prop.verification || {};
+    setVerifyLegal(!!ver.legalOwnership);
+    setVerifyTax(!!ver.taxClearance);
+    setVerifyRoad(!!ver.accessRoad);
+    setVerifyPhysical(!!ver.physicalCheck);
+    setVerifyUtilities(!!ver.utilityChecks);
 
     setActiveSubTab('add');
   };
@@ -631,6 +675,70 @@ export default function AdminPanel({
       setDemandRejectNotes('');
     } catch (err) {
       showToast('Rejection failed: ' + err.message, 'error');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const startEditDemand = (demand) => {
+    setEditDemandLocation(demand.location || '');
+    setEditDemandMinPrice(String(demand.minPrice || ''));
+    setEditDemandMaxPrice(String(demand.maxPrice || ''));
+    setEditDemandPropertyType(demand.propertyType || 'house');
+    setEditDemandDescription(demand.description || '');
+    setEditDemandBedrooms(String(demand.details?.bedrooms || ''));
+    setEditDemandStatus(demand.reviewStatus || 'pending');
+    setEditDemandNotes(demand.reviewerNotes || '');
+    setIsEditingDemand(true);
+  };
+
+  const handleSaveDemandEdit = async () => {
+    if (!selectedDemand) return;
+    setActionLoading(selectedDemand.id);
+    try {
+      const details = { ...selectedDemand.details };
+      if (editDemandPropertyType === 'house' || editDemandPropertyType === 'flat') {
+        if (editDemandBedrooms) details.bedrooms = parseInt(editDemandBedrooms, 10);
+      } else {
+        delete details.bedrooms;
+      }
+
+      const updates = {
+        location: editDemandLocation,
+        minPrice: parseFloat(editDemandMinPrice) || 0,
+        maxPrice: parseFloat(editDemandMaxPrice) || 0,
+        propertyType: editDemandPropertyType,
+        description: editDemandDescription,
+        details,
+        reviewStatus: editDemandStatus,
+        reviewerNotes: editDemandNotes,
+        reviewedBy: user?.id,
+        reviewedAt: new Date().toISOString()
+      };
+
+      const updated = await updateDemand(selectedDemand.id, updates);
+      if (onDemandsChange) onDemandsChange();
+      setSelectedDemand(updated);
+      setIsEditingDemand(false);
+      showToast('Demand updated successfully!');
+    } catch (err) {
+      showToast('Update failed: ' + err.message, 'error');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleDeleteDemand = async (demandId) => {
+    if (!window.confirm('Are you sure you want to permanently delete this demand?')) return;
+    setActionLoading(demandId);
+    try {
+      await deleteDemand(demandId);
+      if (onDemandsChange) onDemandsChange();
+      setSelectedDemand(null);
+      setIsEditingDemand(false);
+      showToast('Demand deleted permanently');
+    } catch (err) {
+      showToast('Delete failed: ' + err.message, 'error');
     } finally {
       setActionLoading('');
     }
@@ -1125,6 +1233,80 @@ export default function AdminPanel({
                   </div>
                 </div>
 
+                {/* Property Trust Shield Verification Checklist */}
+                <div className="border-t border-border-subtle pt-4 mt-2 text-left">
+                  <h3 className="text-[14px] font-bold text-primary mb-3">Property Trust Shield Verification</h3>
+                  <p className="text-[12px] text-on-surface-variant mb-4">
+                    Select the verification checklist items that have been completed for this listing.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-[8px] border border-border-subtle bg-surface-offwhite hover:border-border-strong transition-all">
+                      <input 
+                        type="checkbox" 
+                        checked={verifyLegal} 
+                        onChange={e => setVerifyLegal(e.target.checked)} 
+                        className="w-4 h-4 rounded border-border-strong text-accent-blue focus:ring-accent-blue"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-bold text-primary">Legal Ownership</span>
+                        <span className="text-[11px] text-on-surface-variant">Lalpurja registration certificate verified</span>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-[8px] border border-border-subtle bg-surface-offwhite hover:border-border-strong transition-all">
+                      <input 
+                        type="checkbox" 
+                        checked={verifyTax} 
+                        onChange={e => setVerifyTax(e.target.checked)} 
+                        className="w-4 h-4 rounded border-border-strong text-accent-blue focus:ring-accent-blue"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-bold text-primary">Tax Clearance</span>
+                        <span className="text-[11px] text-on-surface-variant">Property tax cleared for fiscal year</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-[8px] border border-border-subtle bg-surface-offwhite hover:border-border-strong transition-all">
+                      <input 
+                        type="checkbox" 
+                        checked={verifyRoad} 
+                        onChange={e => setVerifyRoad(e.target.checked)} 
+                        className="w-4 h-4 rounded border-border-strong text-accent-blue focus:ring-accent-blue"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-bold text-primary">Access Road Confirmation</span>
+                        <span className="text-[11px] text-on-surface-variant">Road width & public right-of-way confirmed</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-[8px] border border-border-subtle bg-surface-offwhite hover:border-border-strong transition-all">
+                      <input 
+                        type="checkbox" 
+                        checked={verifyPhysical} 
+                        onChange={e => setVerifyPhysical(e.target.checked)} 
+                        className="w-4 h-4 rounded border-border-strong text-accent-blue focus:ring-accent-blue"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-bold text-primary">Broker Physical Inspection</span>
+                        <span className="text-[11px] text-on-surface-variant">On-site checklist and condition checked</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-[8px] border border-border-subtle bg-surface-offwhite hover:border-border-strong transition-all md:col-span-2">
+                      <input 
+                        type="checkbox" 
+                        checked={verifyUtilities} 
+                        onChange={e => setVerifyUtilities(e.target.checked)} 
+                        className="w-4 h-4 rounded border-border-strong text-accent-blue focus:ring-accent-blue"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-bold text-primary">Utility Infrastructure</span>
+                        <span className="text-[11px] text-on-surface-variant">Dedicated water/electricity supply lines verified</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-2">
                   <label className="text-[14px] font-semibold text-on-surface-variant">Brief Description</label>
                   <textarea 
@@ -1386,170 +1568,356 @@ export default function AdminPanel({
             </div>
           )}
 
-          {activeSubTab === 'demands' && (
-            <div>
-              <div className="flex justify-between items-end mb-8">
-                <div>
-                  <h1 className="text-[28px] font-bold text-primary tracking-tight">Review Demands</h1>
-                  <p className="text-on-surface-variant text-[15px] mt-1">Buyer property requirements awaiting review.</p>
-                </div>
-              </div>
-
-              {demands.length === 0 ? (
-                <div className="py-16 text-center bg-white rounded-2xl border border-dashed border-border-strong">
-                  <Inbox size={40} className="mx-auto mb-4 text-on-surface-variant opacity-30" />
-                  <h3 className="text-[18px] font-bold text-primary mb-2">No demands posted</h3>
-                  <p className="text-[14px] text-on-surface-variant">When buyers post property demands, they'll appear here for review.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Demands List */}
-                  <div className="flex flex-col gap-4 text-left">
-                    {demands.map(demand => (
-                      <div
-                        key={demand.id}
-                        onClick={() => { setSelectedDemand(demand); setDemandRejectNotes(''); }}
-                        className={`bg-white border rounded-xl p-5 cursor-pointer transition-all ${
-                          selectedDemand?.id === demand.id ? 'border-accent-blue shadow-md' : 'border-border-subtle hover:border-border-strong'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3 className="text-[16px] font-bold text-primary">{demand.location}</h3>
-                            <p className="text-[13px] text-on-surface-variant mt-0.5">
-                              by {demand.buyerName}
-                            </p>
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                            demand.reviewStatus === 'pending' ? 'bg-orange-100 text-orange-700' :
-                            demand.reviewStatus === 'approved' ? 'bg-green-50 text-green-600' :
-                            'bg-red-50 text-red-600'
-                          }`}>
-                            {demand.reviewStatus}
-                          </span>
-                        </div>
-                        <div className="flex gap-4 text-[13px] text-on-surface-variant">
-                          <span className="font-semibold text-accent-blue">Rs. {(demand.minPrice/100000).toFixed(0)}L - {(demand.maxPrice/100000).toFixed(0)}L</span>
-                          <span className="capitalize">{demand.propertyType}</span>
-                          <span>{demand.createdAt ? new Date(demand.createdAt).toLocaleDateString() : 'Recent'}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Demand Detail Panel */}
+          {activeSubTab === 'demands' && (() => {
+            const filteredDemands = demands.filter(d => d.reviewStatus === demandsFilter);
+            return (
+              <div>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-border-subtle pb-4 text-left">
                   <div>
-                    {selectedDemand ? (
-                      <div className="bg-white border border-border-subtle rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] sticky top-[80px] text-left">
-                        <div className="flex justify-between items-center mb-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface-offwhite border border-border-subtle capitalize`}>
-                            {selectedDemand.propertyType}
-                          </span>
-                          <span className="text-[12px] text-on-surface-variant font-medium">
-                            Posted: {selectedDemand.createdAt ? new Date(selectedDemand.createdAt).toLocaleDateString() : 'Recent'}
-                          </span>
-                        </div>
+                    <h1 className="text-[28px] font-bold text-primary tracking-tight">Review Demands</h1>
+                    <p className="text-on-surface-variant text-[15px] mt-1">Moderation panel for user requirements.</p>
+                  </div>
+                  
+                  {/* Status Filter Tabs */}
+                  <div className="flex bg-surface-offwhite p-1 rounded-full border border-border-subtle self-start sm:self-auto">
+                    {['pending', 'approved', 'rejected'].map((status) => {
+                      const count = demands.filter(d => d.reviewStatus === status).length;
+                      return (
+                        <button
+                          key={status}
+                          onClick={() => { setDemandsFilter(status); setSelectedDemand(null); setIsEditingDemand(false); }}
+                          className={`px-4 py-1.5 rounded-full text-[13px] font-bold transition-all cursor-pointer capitalize flex items-center gap-1.5 ${
+                            demandsFilter === status 
+                              ? 'bg-primary text-white shadow-sm' 
+                              : 'text-on-surface-variant hover:text-primary'
+                          }`}
+                        >
+                          <span>{status}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                            demandsFilter === status ? 'bg-white/20 text-white' : 'bg-border-subtle text-on-surface-variant'
+                          }`}>{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                        <h3 className="text-[20px] font-bold text-primary mb-1">Looking in {selectedDemand.location}</h3>
-                        <p className="text-[14px] text-on-surface-variant mb-6">
-                          Submitted by <strong>{selectedDemand.buyerName}</strong>
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-3 mb-5">
-                          <div className="bg-surface-offwhite p-3 rounded-lg">
-                            <p className="text-[11px] text-on-surface-variant font-bold uppercase">Budget Range</p>
-                            <p className="text-[15px] font-bold text-primary">Rs. {(selectedDemand.minPrice / 100000).toFixed(0)}L - {(selectedDemand.maxPrice / 100000).toFixed(0)}L</p>
-                          </div>
-                          <div className="bg-surface-offwhite p-3 rounded-lg">
-                            <p className="text-[11px] text-on-surface-variant font-bold uppercase">Specification</p>
-                            <p className="text-[15px] font-bold text-primary">
-                              {selectedDemand.details?.bedrooms ? `${selectedDemand.details.bedrooms} BHK` : 'N/A'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {selectedDemand.description && (
-                          <div className="bg-surface-offwhite p-3 rounded-lg mb-5">
-                            <p className="text-[11px] text-on-surface-variant font-bold uppercase mb-1">Requirements Message</p>
-                            <p className="text-[14px] text-primary italic">"{selectedDemand.description}"</p>
-                          </div>
-                        )}
-
-                        <div className="bg-surface-offwhite p-3 rounded-lg mb-6 border border-border-subtle/50">
-                          <p className="text-[11px] text-on-surface-variant font-bold uppercase mb-2">Buyer Verification Info</p>
-                          <div className="flex flex-col gap-1.5 text-[13px] text-primary">
-                            <div className="flex items-center gap-2">
-                              <Mail size={13} className="text-on-surface-variant/70" />
-                              <span>{selectedDemand.buyerEmail}</span>
+                {filteredDemands.length === 0 ? (
+                  <div className="py-16 text-center bg-white rounded-2xl border border-dashed border-border-strong">
+                    <Inbox size={40} className="mx-auto mb-4 text-on-surface-variant opacity-30" />
+                    <h3 className="text-[18px] font-bold text-primary mb-2">No demands in this tab</h3>
+                    <p className="text-[14px] text-on-surface-variant">There are no demands matching status: {demandsFilter}.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+                    {/* Demands List */}
+                    <div className="flex flex-col gap-4 text-left">
+                      {filteredDemands.map(demand => (
+                        <div
+                          key={demand.id}
+                          onClick={() => { setSelectedDemand(demand); setDemandRejectNotes(''); setIsEditingDemand(false); }}
+                          className={`bg-white border rounded-xl p-5 cursor-pointer transition-all ${
+                            selectedDemand?.id === demand.id ? 'border-accent-blue shadow-md' : 'border-border-subtle hover:border-border-strong'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h3 className="text-[16px] font-bold text-primary">{demand.location}</h3>
+                              <p className="text-[13px] text-on-surface-variant mt-0.5">
+                                by {demand.buyerName}
+                              </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Phone size={13} className="text-on-surface-variant/70" />
-                              <span>{selectedDemand.buyerPhone}</span>
-                            </div>
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold capitalize ${
+                              demand.reviewStatus === 'pending' ? 'bg-orange-100 text-orange-700' :
+                              demand.reviewStatus === 'approved' ? 'bg-green-50 text-green-600' :
+                              'bg-red-50 text-red-600'
+                            }`}>
+                              {demand.reviewStatus}
+                            </span>
+                          </div>
+                          <div className="flex gap-4 text-[13px] text-on-surface-variant">
+                            <span className="font-semibold text-accent-blue">Rs. {((demand.minPrice || 0)/100000).toFixed(0)}L - {((demand.maxPrice || 0)/100000).toFixed(0)}L</span>
+                            <span className="capitalize">{demand.propertyType}</span>
+                            <span>{demand.createdAt ? new Date(demand.createdAt).toLocaleDateString() : 'Recent'}</span>
                           </div>
                         </div>
+                      ))}
+                    </div>
 
-                        {selectedDemand.reviewStatus === 'pending' && (
-                          <>
-                            <div className="flex flex-col gap-2 mb-4">
-                              <label className="text-[12px] font-semibold text-on-surface-variant">Reviewer Notes (optional)</label>
-                              <textarea
-                                value={demandRejectNotes}
-                                onChange={(e) => setDemandRejectNotes(e.target.value)}
-                                placeholder="Add notes for rejection reason..."
-                                rows={2}
-                                className="w-full p-3 bg-surface-offwhite border border-border-strong rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 resize-none"
+                    {/* Demand Detail Panel */}
+                    <div>
+                      {selectedDemand && isEditingDemand ? (
+                        /* Editing Form View */
+                        <div className="bg-white border border-border-subtle rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-left flex flex-col gap-4 sticky top-[80px]">
+                          <div className="flex justify-between items-center border-b border-border-subtle pb-3">
+                            <h3 className="text-[16px] font-bold text-primary">Edit Demand Details</h3>
+                            <button 
+                              onClick={() => setIsEditingDemand(false)}
+                              className="text-on-surface-variant hover:text-primary text-[12px] font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <X size={14} /> Cancel
+                            </button>
+                          </div>
+
+                          {/* Location */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[12px] font-bold text-on-surface-variant">Preferred Location</label>
+                            <input 
+                              type="text"
+                              value={editDemandLocation}
+                              onChange={(e) => setEditDemandLocation(e.target.value)}
+                              className="w-full h-10 px-3 bg-surface-offwhite border border-border-strong rounded-lg text-[14px]"
+                            />
+                          </div>
+
+                          {/* Prices Grid */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[12px] font-bold text-on-surface-variant">Min Budget (Rs.)</label>
+                              <input 
+                                type="number"
+                                value={editDemandMinPrice}
+                                onChange={(e) => setEditDemandMinPrice(e.target.value)}
+                                className="w-full h-10 px-3 bg-surface-offwhite border border-border-strong rounded-lg text-[14px]"
                               />
                             </div>
-                            <div className="flex gap-3">
-                              <button
-                                onClick={() => handleApproveDemand(selectedDemand)}
-                                disabled={actionLoading === selectedDemand.id}
-                                className="flex-1 h-10 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[13px] font-semibold transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                              >
-                                {actionLoading === selectedDemand.id ? (
-                                  <Loader2 size={14} className="animate-spin" />
-                                ) : (
-                                  <CheckCircle2 size={14} />
-                                )}
-                                Approve & Publish
-                              </button>
-                              <button
-                                onClick={() => handleRejectDemand(selectedDemand.id)}
-                                disabled={actionLoading === selectedDemand.id}
-                                className="flex-1 h-10 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[13px] font-semibold transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                              >
-                                <XCircle size={14} />
-                                Reject
-                              </button>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[12px] font-bold text-on-surface-variant">Max Budget (Rs.)</label>
+                              <input 
+                                type="number"
+                                value={editDemandMaxPrice}
+                                onChange={(e) => setEditDemandMaxPrice(e.target.value)}
+                                className="w-full h-10 px-3 bg-surface-offwhite border border-border-strong rounded-lg text-[14px]"
+                              />
                             </div>
-                          </>
-                        )}
-
-                        {selectedDemand.reviewStatus !== 'pending' && (
-                          <div className={`px-4 py-3 rounded-xl text-[13px] font-medium ${
-                            selectedDemand.reviewStatus === 'approved'
-                              ? 'bg-green-50 text-green-700'
-                              : 'bg-red-50 text-red-700'
-                          }`}>
-                            This demand has been <strong>{selectedDemand.reviewStatus}</strong>
-                            {selectedDemand.reviewerNotes && (
-                              <p className="mt-1 opacity-80">Notes: {selectedDemand.reviewerNotes}</p>
-                            )}
                           </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="h-full min-h-[300px] flex flex-col justify-center items-center border border-dashed border-border-strong rounded-xl p-10 text-on-surface-variant text-center bg-white">
-                        <Eye size={32} className="mb-3 text-accent-blue" />
-                        <p className="text-[14px] font-medium">Select a demand to review details</p>
-                      </div>
-                    )}
+
+                          {/* Type & Bedrooms */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[12px] font-bold text-on-surface-variant">Property Type</label>
+                              <select
+                                value={editDemandPropertyType}
+                                onChange={(e) => setEditDemandPropertyType(e.target.value)}
+                                className="w-full h-10 px-2 bg-surface-offwhite border border-border-strong rounded-lg text-[14px]"
+                              >
+                                <option value="house">House</option>
+                                <option value="flat">Flat / Apartment</option>
+                                <option value="land">Land</option>
+                                <option value="commercial">Commercial</option>
+                              </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[12px] font-bold text-on-surface-variant">Bedrooms (BHK)</label>
+                              <input 
+                                type="number"
+                                disabled={editDemandPropertyType !== 'house' && editDemandPropertyType !== 'flat'}
+                                value={editDemandBedrooms}
+                                onChange={(e) => setEditDemandBedrooms(e.target.value)}
+                                className="w-full h-10 px-3 bg-surface-offwhite border border-border-strong rounded-lg text-[14px] disabled:opacity-50"
+                                placeholder="e.g. 3"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[12px] font-bold text-on-surface-variant">Requirements</label>
+                            <textarea 
+                              value={editDemandDescription}
+                              onChange={(e) => setEditDemandDescription(e.target.value)}
+                              rows={2}
+                              className="w-full p-3 bg-surface-offwhite border border-border-strong rounded-lg text-[14px] resize-none"
+                            />
+                          </div>
+
+                          {/* Moderation Status & Notes */}
+                          <div className="border-t border-border-subtle pt-3 mt-1 flex flex-col gap-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[12px] font-bold text-on-surface-variant">Review Status</label>
+                                <select
+                                  value={editDemandStatus}
+                                  onChange={(e) => setEditDemandStatus(e.target.value)}
+                                  className="w-full h-10 px-2 bg-surface-offwhite border border-border-strong rounded-lg text-[14px]"
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="approved">Approved</option>
+                                  <option value="rejected">Rejected</option>
+                                </select>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[12px] font-bold text-on-surface-variant">Reviewer Notes</label>
+                                <input 
+                                  type="text"
+                                  value={editDemandNotes}
+                                  onChange={(e) => setEditDemandNotes(e.target.value)}
+                                  className="w-full h-10 px-3 bg-surface-offwhite border border-border-strong rounded-lg text-[14px]"
+                                  placeholder="Notes or reject reason..."
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3 mt-2 border-t border-border-subtle pt-3">
+                            <button
+                              onClick={handleSaveDemandEdit}
+                              disabled={actionLoading === selectedDemand.id}
+                              className="flex-1 h-10 bg-accent-blue text-white rounded-xl text-[13px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                            >
+                              {actionLoading === selectedDemand.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                              Save Changes
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDemand(selectedDemand.id)}
+                              disabled={actionLoading === selectedDemand.id}
+                              className="h-10 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[13px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ) : selectedDemand ? (
+                        /* Normal Detail Display Mode */
+                        <div className="bg-white border border-border-subtle rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] sticky top-[80px] text-left">
+                          <div className="flex justify-between items-center mb-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface-offwhite border border-border-subtle capitalize`}>
+                              {selectedDemand.propertyType}
+                            </span>
+                            <span className="text-[12px] text-on-surface-variant font-medium">
+                              Posted: {selectedDemand.createdAt ? new Date(selectedDemand.createdAt).toLocaleDateString() : 'Recent'}
+                            </span>
+                          </div>
+
+                          <h3 className="text-[20px] font-bold text-primary mb-1">Looking in {selectedDemand.location}</h3>
+                          <p className="text-[14px] text-on-surface-variant mb-6">
+                            Submitted by <strong>{selectedDemand.buyerName}</strong>
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-3 mb-5">
+                            <div className="bg-surface-offwhite p-3 rounded-lg">
+                              <p className="text-[11px] text-on-surface-variant font-bold uppercase">Budget Range</p>
+                              <p className="text-[15px] font-bold text-primary">Rs. {((selectedDemand.minPrice || 0) / 100000).toFixed(0)}L - {((selectedDemand.maxPrice || 0) / 100000).toFixed(0)}L</p>
+                            </div>
+                            <div className="bg-surface-offwhite p-3 rounded-lg">
+                              <p className="text-[11px] text-on-surface-variant font-bold uppercase">Specification</p>
+                              <p className="text-[15px] font-bold text-primary">
+                                {selectedDemand.details?.bedrooms ? `${selectedDemand.details.bedrooms} BHK` : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {selectedDemand.description && (
+                            <div className="bg-surface-offwhite p-3 rounded-lg mb-5">
+                              <p className="text-[11px] text-on-surface-variant font-bold uppercase mb-1">Requirements Message</p>
+                              <p className="text-[14px] text-primary italic">"{selectedDemand.description}"</p>
+                            </div>
+                          )}
+
+                          <div className="bg-surface-offwhite p-3 rounded-lg mb-6 border border-border-subtle/50">
+                            <p className="text-[11px] text-on-surface-variant font-bold uppercase mb-2">Buyer Verification Info</p>
+                            <div className="flex flex-col gap-1.5 text-[13px] text-primary">
+                              <div className="flex items-center gap-2">
+                                <Mail size={13} className="text-on-surface-variant/70" />
+                                <span>{selectedDemand.buyerEmail}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone size={13} className="text-on-surface-variant/70" />
+                                <span>{selectedDemand.buyerPhone}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {selectedDemand.reviewStatus === 'pending' && (
+                            <>
+                              <div className="flex flex-col gap-2 mb-4">
+                                <label className="text-[12px] font-semibold text-on-surface-variant">Reviewer Notes (optional)</label>
+                                <textarea
+                                  value={demandRejectNotes}
+                                  onChange={(e) => setDemandRejectNotes(e.target.value)}
+                                  placeholder="Add notes for rejection reason..."
+                                  rows={2}
+                                  className="w-full p-3 bg-surface-offwhite border border-border-strong rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 resize-none"
+                                />
+                              </div>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => handleApproveDemand(selectedDemand)}
+                                  disabled={actionLoading === selectedDemand.id}
+                                  className="flex-1 h-10 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[13px] font-semibold transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                  {actionLoading === selectedDemand.id ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : (
+                                    <CheckCircle2 size={14} />
+                                  )}
+                                  Approve & Publish
+                                </button>
+                                <button
+                                  onClick={() => handleRejectDemand(selectedDemand.id)}
+                                  disabled={actionLoading === selectedDemand.id}
+                                  className="flex-1 h-10 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[13px] font-semibold transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                  <XCircle size={14} />
+                                  Reject
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteDemand(selectedDemand.id)}
+                                disabled={actionLoading === selectedDemand.id}
+                                className="w-full h-10 mt-3 bg-surface-offwhite hover:bg-red-50 text-red-500 border border-border-subtle rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                              >
+                                <Trash2 size={14} />
+                                Delete Demand
+                              </button>
+                            </>
+                          )}
+
+                          {selectedDemand.reviewStatus !== 'pending' && (
+                            <div className="flex flex-col gap-3">
+                              <div className={`px-4 py-3 rounded-xl text-[13px] font-medium ${
+                                selectedDemand.reviewStatus === 'approved'
+                                  ? 'bg-green-50 text-green-700'
+                                  : 'bg-red-50 text-red-700'
+                              }`}>
+                                This demand has been <strong className="capitalize">{selectedDemand.reviewStatus}</strong>
+                                {selectedDemand.reviewerNotes && (
+                                  <p className="mt-1 opacity-80">Notes: {selectedDemand.reviewerNotes}</p>
+                                )}
+                              </div>
+                              
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => startEditDemand(selectedDemand)}
+                                  className="flex-1 h-10 bg-accent-blue text-white rounded-xl text-[13px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                                >
+                                  <Edit3 size={14} />
+                                  Edit Info / Status
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDemand(selectedDemand.id)}
+                                  className="h-10 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="h-full min-h-[300px] flex flex-col justify-center items-center border border-dashed border-border-strong rounded-xl p-10 text-on-surface-variant text-center bg-white">
+                          <Eye size={32} className="mb-3 text-accent-blue" />
+                          <p className="text-[14px] font-medium">Select a demand to review details</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            );
+          })()}
 
         </div>
       </main>

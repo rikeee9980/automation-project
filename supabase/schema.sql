@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS properties (
   tagline TEXT,
   ai_score INTEGER DEFAULT 90,
   ai_price_prediction JSONB DEFAULT '{}',
+  verification JSONB DEFAULT '{}',
   status TEXT DEFAULT 'available' CHECK (status IN ('available', 'sold', 'delisted')),
   agent_id UUID REFERENCES auth.users(id),
   created_at TIMESTAMPTZ DEFAULT now(),

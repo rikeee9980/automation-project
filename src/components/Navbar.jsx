@@ -53,6 +53,7 @@ export default function Navbar({ currentTab, setCurrentTab, isAdmin, setIsAdmin 
     }
   };
 
+
   const navTabs = [
     { id: 'home', label: 'Buy' },
     { id: 'map', label: 'Map' },

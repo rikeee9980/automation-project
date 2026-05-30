@@ -93,7 +93,7 @@ function AppContent() {
   const loadDemands = async () => {
     try {
       const data = await fetchDemands(isAuthenticated);
-      setDemands(data);
+      setDemands([...data]);
     } catch (err) {
       console.warn('Failed to load demands:', err);
     }

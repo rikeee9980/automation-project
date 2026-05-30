@@ -125,7 +125,7 @@ function loadGoogleMapsAPI(apiKey) {
   if (googleMapsPromise) return googleMapsPromise;
   googleMapsPromise = new Promise((resolve, reject) => {
     if (window.google && window.google.maps) {
-      resolve(window.google.maps);
+      resolve(window.google);
       return;
     }
     const script = document.createElement('script');
@@ -134,7 +134,7 @@ function loadGoogleMapsAPI(apiKey) {
     script.defer = true;
     script.onload = () => {
       if (window.google && window.google.maps) {
-        resolve(window.google.maps);
+        resolve(window.google);
       } else {
         reject(new Error('Google Maps API failed to load.'));
       }

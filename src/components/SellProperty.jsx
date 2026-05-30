@@ -374,12 +374,6 @@ export default function SellProperty() {
                 <div className="w-5 h-5 rounded-full bg-accent-blue/10 flex items-center justify-center flex-shrink-0">
                   <span className="text-accent-blue text-[11px] font-bold">2</span>
                 </div>
-                AI scoring & market analysis
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-accent-blue/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-accent-blue text-[11px] font-bold">3</span>
-                </div>
                 Property goes live on Nepal Exchange
               </li>
             </ul>
@@ -402,15 +396,11 @@ export default function SellProperty() {
     <div className="max-w-[780px] mx-auto px-gutter py-10">
       {/* Header */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent-blue/10 text-accent-blue text-[13px] font-semibold mb-4">
-          <Sparkles size={14} />
-          <span>AI-Powered Listing</span>
-        </div>
         <h1 className="text-[32px] font-bold text-primary tracking-tight mb-2">
           List Your Property
         </h1>
         <p className="text-on-surface-variant text-[16px] font-medium">
-          Submit your property for review. Our AI will evaluate and optimize your listing.
+          Submit your property for review. Our team will evaluate and publish your listing.
         </p>
       </div>
 

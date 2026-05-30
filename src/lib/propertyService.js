@@ -27,7 +27,10 @@ function generateSecureRandomString(length = 9) {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(array[i] % chars.length);
+    const val = array.at(i);
+    if (val !== undefined) {
+      result += chars.charAt(val % chars.length);
+    }
   }
   return result;
 }
@@ -83,6 +86,7 @@ export async function createProperty(propertyData) {
         threeYear: Math.round(propertyData.price * 1.15),
       },
       status: 'available',
+      verification: propertyData.verification || {},
     })
     .select()
     .single();
@@ -104,6 +108,7 @@ export async function updateProperty(id, updates) {
   if (updates.details !== undefined) payload.details = updates.details;
   if (updates.location !== undefined) payload.location = updates.location;
   if (updates.amenities !== undefined) payload.amenities = updates.amenities;
+  if (updates.verification !== undefined) payload.verification = updates.verification;
   payload.updated_at = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -355,6 +360,7 @@ function transformProperty(row) {
     agentId: row.agent_id,
     createdAt: row.created_at,
     tagline: row.tagline || '',
+    verification: row.verification || {},
   };
 }
 
@@ -388,15 +394,15 @@ export async function fetchDemands(isAuthenticated = false) {
 
   if (error) {
     console.warn('Supabase fetch demands failed, using mock data:', error.message);
-    return isAuthenticated 
-      ? mockDemands 
+    return isAuthenticated
+      ? [...mockDemands]
       : mockDemands.filter(d => d.reviewStatus === 'approved');
   }
 
   // Transform and filter
   const transformed = data.map(transformDemand);
-  return isAuthenticated 
-    ? transformed 
+  return isAuthenticated
+    ? transformed
     : transformed.filter(d => d.reviewStatus === 'approved');
 }
 
@@ -423,7 +429,27 @@ export async function createDemand(demandData) {
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.warn('Supabase createDemand failed, using mock fallback:', error.message);
+    const newMockDemand = {
+      id: 'demand-' + (mockDemands.length + 1) + '-' + Date.now().toString(36),
+      buyerName: demandData.buyerName,
+      buyerEmail: demandData.buyerEmail,
+      buyerPhone: demandData.buyerPhone,
+      propertyType: demandData.propertyType,
+      location: demandData.location,
+      lat: demandData.lat,
+      lng: demandData.lng,
+      minPrice: demandData.minPrice,
+      maxPrice: demandData.maxPrice,
+      details: demandData.details || {},
+      description: demandData.description || '',
+      reviewStatus: 'pending',
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+    mockDemands.unshift(newMockDemand);
+    return newMockDemand;
+  }
   return transformDemand(data);
 }
 
@@ -442,7 +468,17 @@ export async function approveDemand(id, reviewerId) {
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.warn('Supabase approveDemand failed, using mock fallback:', error.message);
+    const demand = mockDemands.find(d => d.id === id);
+    if (demand) {
+      demand.reviewStatus = 'approved';
+      demand.reviewedBy = reviewerId;
+      demand.reviewedAt = new Date().toISOString();
+      return demand;
+    }
+    throw new Error('Demand not found in mock data: ' + error.message);
+  }
   return transformDemand(data);
 }
 
@@ -462,8 +498,80 @@ export async function rejectDemand(id, reviewerId, notes = '') {
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.warn('Supabase rejectDemand failed, using mock fallback:', error.message);
+    const demand = mockDemands.find(d => d.id === id);
+    if (demand) {
+      demand.reviewStatus = 'rejected';
+      demand.reviewerNotes = notes;
+      demand.reviewedBy = reviewerId;
+      demand.reviewedAt = new Date().toISOString();
+      return demand;
+    }
+    throw new Error('Demand not found in mock data: ' + error.message);
+  }
   return transformDemand(data);
+}
+
+/**
+ * Update a demand by ID (requires auth).
+ */
+export async function updateDemand(id, updates) {
+  const payload = {};
+  if (updates.buyerName !== undefined) payload.buyer_name = updates.buyerName;
+  if (updates.buyerEmail !== undefined) payload.buyer_email = updates.buyerEmail;
+  if (updates.buyerPhone !== undefined) payload.buyer_phone = updates.buyerPhone;
+  if (updates.propertyType !== undefined) payload.property_type = updates.propertyType;
+  if (updates.location !== undefined) payload.location = updates.location;
+  if (updates.minPrice !== undefined) payload.min_price = updates.minPrice;
+  if (updates.maxPrice !== undefined) payload.max_price = updates.maxPrice;
+  if (updates.details !== undefined) payload.details = updates.details;
+  if (updates.description !== undefined) payload.description = updates.description;
+  if (updates.reviewStatus !== undefined) payload.review_status = updates.reviewStatus;
+  if (updates.reviewerNotes !== undefined) payload.reviewer_notes = updates.reviewerNotes;
+  if (updates.reviewedBy !== undefined) payload.reviewed_by = updates.reviewedBy;
+  if (updates.reviewedAt !== undefined) payload.reviewed_at = updates.reviewedAt;
+  payload.updated_at = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('demands')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.warn('Supabase updateDemand failed, using mock fallback:', error.message);
+    const demand = mockDemands.find(d => d.id === id);
+    if (demand) {
+      Object.assign(demand, updates);
+      demand.updatedAt = new Date().toISOString();
+      return demand;
+    }
+    throw new Error('Demand not found in mock data: ' + error.message);
+  }
+  return transformDemand(data);
+}
+
+/**
+ * Delete a demand by ID (requires auth).
+ */
+export async function deleteDemand(id) {
+  const { error } = await supabase
+    .from('demands')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.warn('Supabase deleteDemand failed, using mock fallback:', error.message);
+    const index = mockDemands.findIndex(d => d.id === id);
+    if (index !== -1) {
+      mockDemands.splice(index, 1);
+      return true;
+    }
+    throw new Error('Demand not found in mock data: ' + error.message);
+  }
+  return true;
 }
 
 /** Transform Supabase snake_case demand row to camelCase for frontend. */
